@@ -1,0 +1,1294 @@
+---
+title: "edi_animated_mapping_share"
+author: "Jordan Ayala"
+date: "6/21/2021"
+output: html_document
+---
+
+```{r}
+library(raster)
+library(maptools)
+library(rgeos)
+library(rgdal)
+library(akima)
+library(reshape)
+library(prevR)
+library(here)
+library(tidyverse)
+library(readr)
+```
+
+```{r}
+options(scipen=999)
+```
+
+
+#Load alternate data as needed
+
+Method 1: BLS LAUS data -- https://github.com/btskinner/county_unemploy/blob/master/county_unemploy.R
+
+```{r}
+df<-read_csv(here("county_unemploy.csv"))
+```
+
+#Arrange updated county urate data from code above to fit with flowing data tutorial scripts
+```{r}
+left <- function(text, n) {
+  substr(text, 1, n)
+}
+
+right <- function(text, n) {
+  substr(text, nchar(text) - (n - 1), nchar(text))
+}
+
+```
+
+
+```{r}
+unemp1<-df %>% 
+  mutate(state_fips=(left(fips,2))) %>% 
+  mutate(county_fips=(right(fips,3))) %>% 
+  unite("name",county:stabbr,sep=",") %>% 
+  mutate(unemp_rate=unem_rate) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  select(state_fips,county_fips,name,year,4:6,unemp_rate)
+unemp1
+
+```
+
+#Pull data from BLS LAUS
+```{r}
+libs <- c('dplyr', 'readr', 'tidyr')
+lapply(libs, require, character.only = TRUE)
+
+## quick functions
+`%+%` <- function(a,b) paste(a, b, sep = '')
+strip_comma <- function(x) as.integer(gsub(',', '', as.character(x)))
+
+################################################################################
+## COUNTY AND STATE LEVEL UNEMPLOYMENT
+################################################################################
+
+## list of years
+yr <- c(1990:2020)
+
+## base url
+baseurl <- 'http://www.bls.gov/lau/laucnty'
+
+## column widths
+widths <- c(18, 7, 6, 50, 6, 12, 13, 11, 9)
+
+## column names
+cnames <- c('lauscode', 'stfips', 'ctfips', 'name', 'year', 'labor_force',
+            'employed', 'unemployed', 'unem_rate')
+
+## init outlist
+outlist <- list()
+
+## loop through years to get all files
+for(y in yr) {
+
+    message('Retrieving and storing data from ' %+% y)
+
+    ## convert year to two digit with leading zero
+    y <- sprintf('%02d', as.integer(substr(y, 3, 4)))
+
+    ## get url
+    url <- baseurl %+%  y %+% '.txt'
+
+    ## download raw text file
+    d <- read_fwf(url,
+                  col_positions = fwf_widths(widths, cnames),
+                  col_types = cols(.default = "c"),
+                  skip = 6)
+
+    ## county
+    d <- d %>%
+        filter(!is.na(stfips)) %>%
+        mutate(fips = stfips %+% ctfips,
+               unem_rate = as.numeric(as.character(unem_rate)),
+               name = ifelse(name == 'District of Columbia',
+                             'District of Columbia, DC',
+                             name)) %>%
+        mutate_at(.vars = vars(labor_force, employed, unemployed),
+                  .funs = funs(strip_comma(.))) %>%
+        separate(name, into = c('county','stabbr'), sep = ',') %>%
+        select(fips, county, stabbr, year, labor_force,
+               employed, unemployed, unem_rate)
+
+    ## store in list
+    outlist[[y]] <- d
+}
+
+## combine outlist into one long dataframe; sort
+df <- bind_rows(outlist) %>%
+    arrange(fips, year)
+
+## write data to disk
+write_csv(df, path = 'county_unemploy.csv')
+
+## =============================================================================
+## END
+```
+
+-----------------------------
+#Method 2 (Census data) 
+
+```{r}
+library(tidycensus)
+options(tigris_use_cache = TRUE)
+census_api_key("f2efe085c3afcd002dc370ddd8f3e6fc96591d80",install=TRUE,overwrite=TRUE)
+```
+
+```{r}
+us <- unique(fips_codes$state)[1:51]
+```
+
+
+Black
+```{r}
+black_emp19 <- map_df(us, function(x) {
+  get_acs(year = 2018,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp18 <- map_df(us, function(x) {
+  get_acs(year = 2018,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp17 <- map_df(us, function(x) {
+  get_acs(year = 2017,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp16 <- map_df(us, function(x) {
+  get_acs(year = 2016,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp15 <- map_df(us, function(x) {
+  get_acs(year = 2015,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp14 <- map_df(us, function(x) {
+  get_acs(year = 2014,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp13 <- map_df(us, function(x) {
+  get_acs(year = 2013,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp12 <- map_df(us, function(x) {
+  get_acs(year = 2012,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp11 <- map_df(us, function(x) {
+  get_acs(year = 2011,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp10 <- map_df(us, function(x) {
+  get_acs(year = 2010,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+black_emp09 <- map_df(us, function(x) {
+  get_acs(year = 2009,geography = "county", table = "C23002B", 
+          state = x)
+})
+
+```
+
+Latino/a/e
+```{r}
+ltx_emp19 <- map_df(us, function(x) {
+  get_acs(year = 2019,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+ltx_emp18 <- map_df(us, function(x) {
+  get_acs(year = 2018,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+ltx_emp17 <- map_df(us, function(x) {
+  get_acs(year = 2017,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+ltx_emp16 <- map_df(us, function(x) {
+  get_acs(year = 2016,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+ltx_emp14 <- map_df(us, function(x) {
+  get_acs(year = 2014,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+ltx_emp15 <- map_df(us, function(x) {
+  get_acs(year = 2015,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+
+ltx_emp13 <- map_df(us, function(x) {
+  get_acs(year = 2013,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+ltx_emp12 <- map_df(us, function(x) {
+  get_acs(year = 2012,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+ltx_emp11 <- map_df(us, function(x) {
+  get_acs(year = 2011,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+ltx_emp10 <- map_df(us, function(x) {
+  get_acs(year = 2010,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+ltx_emp09 <- map_df(us, function(x) {
+  get_acs(year = 2009,geography = "county", table = "C23002I", 
+          state = x)
+})
+
+```
+
+white
+```{r}
+wht_nonhisp_emp19 <- map_df(us, function(x) {
+  get_acs(year = 2019,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp18 <- map_df(us, function(x) {
+  get_acs(year = 2018,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp17 <- map_df(us, function(x) {
+  get_acs(year = 2017,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp16 <- map_df(us, function(x) {
+  get_acs(year = 2016,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp15 <- map_df(us, function(x) {
+  get_acs(year = 2015,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp14 <- map_df(us, function(x) {
+  get_acs(year = 2014,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp13 <- map_df(us, function(x) {
+  get_acs(year = 2013,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp12 <- map_df(us, function(x) {
+  get_acs(year = 2012,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp11 <- map_df(us, function(x) {
+  get_acs(year = 2011,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp10 <- map_df(us, function(x) {
+  get_acs(year = 2010,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+wht_nonhisp_emp09 <- map_df(us, function(x) {
+  get_acs(year = 2009,geography = "county", table = "C23002H", 
+          state = x)
+})
+
+```
+
+Asian
+```{r}
+asn_emp19 <- map_df(us, function(x) {
+  get_acs(year = 2019,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+
+asn_emp18 <- map_df(us, function(x) {
+  get_acs(year = 2018,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+asn_emp17 <- map_df(us, function(x) {
+  get_acs(year = 2017,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+asn_emp16 <- map_df(us, function(x) {
+  get_acs(year = 2016,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+asn_emp15 <- map_df(us, function(x) {
+  get_acs(year = 2015,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+asn_emp14 <- map_df(us, function(x) {
+  get_acs(year = 2014,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+asn_emp13 <- map_df(us, function(x) {
+  get_acs(year = 2013,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+asn_emp12 <- map_df(us, function(x) {
+  get_acs(year = 2012,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+asn_emp11 <- map_df(us, function(x) {
+  get_acs(year = 2011,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+asn_emp10 <- map_df(us, function(x) {
+  get_acs(year = 2010,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+asn_emp09 <- map_df(us, function(x) {
+  get_acs(year = 2009,geography = "county", table = "C23002D", 
+          state = x)
+})
+
+```
+
+AmerIndian
+```{r}
+amerind_emp19 <- map_df(us, function(x) {
+  get_acs(year = 2019,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp18 <- map_df(us, function(x) {
+  get_acs(year = 2018,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp17 <- map_df(us, function(x) {
+  get_acs(year = 2017,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp16 <- map_df(us, function(x) {
+  get_acs(year = 2016,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp15 <- map_df(us, function(x) {
+  get_acs(year = 2015,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp14 <- map_df(us, function(x) {
+  get_acs(year = 2014,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp13 <- map_df(us, function(x) {
+  get_acs(year = 2013,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp12 <- map_df(us, function(x) {
+  get_acs(year = 2012,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp11 <- map_df(us, function(x) {
+  get_acs(year = 2011,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp10 <- map_df(us, function(x) {
+  get_acs(year = 2010,geography = "county", table = "C23002C", 
+          state = x)
+})
+
+amerind_emp09 <- map_df(us, function(x) {
+  get_acs(year = 2009,geography = "county", table = "C23002C", 
+          state = x)
+})
+```
+
+all groups 2009-2016
+```{r}
+all_emp19 <- map_df(us, function(x) {
+  get_acs(year = 2019, geography = "county", table = "B23001", 
+          state = x)
+  
+all_emp18 <- map_df(us, function(x) {
+  get_acs(year = 2018, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp17 <- map_df(us, function(x) {
+  get_acs(year = 2017, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp16 <- map_df(us, function(x) {
+  get_acs(year = 2016, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp15 <- map_df(us, function(x) {
+  get_acs(year = 2015, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp14 <- map_df(us, function(x) {
+  get_acs(year = 2014, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp13 <- map_df(us, function(x) {
+  get_acs(year = 2013, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp12 <- map_df(us, function(x) {
+  get_acs(year = 2012, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp11 <- map_df(us, function(x) {
+  get_acs(year = 2011, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp10 <- map_df(us, function(x) {
+  get_acs(year = 2010, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp9 <- map_df(us, function(x) {
+  get_acs(year = 2009, geography = "county", table = "B23001", 
+          state = x)
+})
+```
+
+```{r}
+all_emp08<- map_df(us, function(x) {
+  get_acs(year = 2008, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp07 <- map_df(us, function(x) {
+  get_acs(year = 2007, geography = "county", table = "B23001", 
+          state = x)
+})
+
+all_emp06 <- map_df(us, function(x) {
+  get_acs(year = 2006, geography = "county", table = "B23001", 
+          state = x)
+})
+```
+
+Write out acs raw tables (counties)
+```{r}
+write_csv(all_emp19,here("cnty_tot_emp_table_2019.csv"))
+write_csv(all_emp18,here("cnty_tot_emp_table_2018.csv"))
+write_csv(all_emp17,here("cnty_tot_emp_table_2017.csv"))
+write_csv(all_emp16,here("cnty_tot_emp_table_2016.csv"))
+write_csv(all_emp15,here("cnty_tot_emp_table_2015.csv"))
+write_csv(all_emp14,here("cnty_tot_emp_table_2014.csv"))
+write_csv(all_emp13,here("cnty_tot_emp_table_2013.csv"))
+write_csv(all_emp12,here("cnty_tot_emp_table_2012.csv"))
+write_csv(all_emp11,here("cnty_tot_emp_table_2011.csv"))
+write_csv(all_emp10,here("cnty_tot_emp_table_2010.csv"))
+write_csv(all_emp9,here("cnty_tot_emp_table_2009.csv"))
+```
+
+Black
+```{r}
+write_csv(black_emp19,here("cnty_blk_emp_table_2018.csv"))
+write_csv(black_emp18,here("cnty_blk_emp_table_2018.csv"))
+write_csv(black_emp17,here("cnty_blk_emp_table_2017.csv"))
+write_csv(black_emp16,here("cnty_blk_emp_table_2016.csv"))
+write_csv(black_emp15,here("cnty_blk_emp_table_2015.csv"))
+write_csv(black_emp14,here("cnty_blk_emp_table_2014.csv"))
+write_csv(black_emp13,here("cnty_blk_emp_table_2013.csv"))
+write_csv(black_emp12,here("cnty_blk_emp_table_2012.csv"))
+write_csv(black_emp11,here("cnty_blk_emp_table_2011.csv"))
+write_csv(black_emp10,here("cnty_blk_emp_table_2010.csv"))
+write_csv(black_emp09,here("cnty_blk_emp_table_2009.csv"))
+
+```
+
+Latinx
+```{r}
+write_csv(ltx_emp19,here("cnty_ltx_emp_table_2019.csv"))
+write_csv(ltx_emp18,here("cnty_ltx_emp_table_2018.csv"))
+write_csv(ltx_emp17,here("cnty_ltx_emp_table_2017.csv"))
+write_csv(ltx_emp16,here("cnty_ltx_emp_table_2016.csv"))
+write_csv(ltx_emp15,here("cnty_ltx_emp_table_2015.csv"))
+write_csv(ltx_emp14,here("cnty_ltx_emp_table_2014.csv"))
+write_csv(ltx_emp13,here("cnty_ltx_emp_table_2013.csv"))
+write_csv(ltx_emp12,here("cnty_ltx_emp_table_2012.csv"))
+write_csv(ltx_emp11,here("cnty_ltx_emp_table_2011.csv"))
+write_csv(ltx_emp10,here("cnty_ltx_emp_table_2010.csv"))
+write_csv(ltx_emp09,here("cnty_ltx_emp_table_2009.csv"))
+```
+
+white non-Hispanic
+```{r}
+write_csv(wht_nonhisp_emp19,here("cnty_wht_emp_table_2018.csv"))
+write_csv(wht_nonhisp_emp18,here("cnty_wht_emp_table_2018.csv"))
+write_csv(wht_nonhisp_emp17,here("cnty_wht_emp_table_2017.csv"))
+write_csv(wht_nonhisp_emp16,here("cnty_wht_emp_table_2016.csv"))
+write_csv(wht_nonhisp_emp15,here("cnty_wht_emp_table_2015.csv"))
+write_csv(wht_nonhisp_emp14,here("cnty_wht_emp_table_2014.csv"))
+write_csv(wht_nonhisp_emp13,here("cnty_wht_emp_table_2013.csv"))
+write_csv(wht_nonhisp_emp12,here("cnty_wht_emp_table_2012.csv"))
+write_csv(wht_nonhisp_emp11,here("cnty_wht_emp_table_2011.csv"))
+write_csv(wht_nonhisp_emp10,here("cnty_wht_emp_table_2010.csv"))
+write_csv(wht_nonhisp_emp09,here("cnty_wht_emp_table_2009.csv"))
+
+```
+
+
+```{r}
+write_csv(asn_emp19,here("cnty_asn_emp_table_2018.csv"))
+write_csv(asn_emp18,here("cnty_asn_emp_table_2018.csv"))
+write_csv(asn_emp17,here("cnty_asn_emp_table_2017.csv"))
+write_csv(asn_emp16,here("cnty_asn_emp_table_2016.csv"))
+write_csv(asn_emp15,here("cnty_asn_emp_table_2015.csv"))
+write_csv(asn_emp14,here("cnty_asn_emp_table_2014.csv"))
+write_csv(asn_emp13,here("cnty_asn_emp_table_2013.csv"))
+write_csv(asn_emp12,here("cnty_asn_emp_table_2012.csv"))
+write_csv(asn_emp11,here("cnty_asn_emp_table_2011.csv"))
+write_csv(asn_emp10,here("cnty_asn_emp_table_2010.csv"))
+write_csv(asn_emp09,here("cnty_asn_emp_table_2009.csv"))
+
+```
+
+
+```{r}
+write_csv(amerind_emp19,here("cnty_amerind_emp_table_2018.csv"))
+write_csv(amerind_emp18,here("cnty_amerind_emp_table_2018.csv"))
+write_csv(amerind_emp17,here("cnty_amerind_emp_table_2017.csv"))
+write_csv(amerind_emp16,here("cnty_amerind_emp_table_2016.csv"))
+write_csv(amerind_emp15,here("cnty_amerind_emp_table_2015.csv"))
+write_csv(amerind_emp14,here("cnty_amerind_emp_table_2014.csv"))
+write_csv(amerind_emp13,here("cnty_amerind_emp_table_2013.csv"))
+write_csv(amerind_emp12,here("cnty_amerind_emp_table_2012.csv"))
+write_csv(amerind_emp11,here("cnty_amerind_emp_table_2011.csv"))
+write_csv(amerind_emp10,here("cnty_amerind_emp_table_2010.csv"))
+write_csv(amerind_emp09,here("cnty_amerind_emp_table_2009.csv"))
+
+```
+
+#Read in county files for all years
+```{r}
+all_2019<-read_csv(here("cnty_tot_emp_table_2019.csv"))
+all_2018<-read_csv(here("cnty_tot_emp_table_2018.csv"))
+all_2017<-read_csv(here("cnty_tot_emp_table_2017.csv"))
+all_2016<-read_csv(here("cnty_tot_emp_table_2016.csv"))
+all_2015<-read_csv(here("cnty_tot_emp_table_2015.csv"))
+all_2014<-read_csv(here("cnty_tot_emp_table_2014.csv"))
+all_2013<-read_csv(here("cnty_tot_emp_table_2013.csv"))
+all_2012<-read_csv(here("cnty_tot_emp_table_2012.csv"))
+all_2011<-read_csv(here("cnty_tot_emp_table_2011.csv"))
+all_2010<-read_csv(here("cnty_tot_emp_table_2010.csv"))
+all_2009<-read_csv(here("cnty_tot_emp_table_2009.csv"))
+```
+
+```{r}
+#2019
+
+us_cnty_unemp_M_19<-all_2019 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_19<-all_2019 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_19<-all_2019%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+
+us_counties_all_19<-bind_cols(us_cnty_unemp_all_19,us_cnty_unemp_f_19,us_cnty_unemp_M_19)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2019")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_19,here("acs_us_cnty_unemp2019.csv"))
+
+#2018
+
+us_cnty_unemp_M_18<-all_2018 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_18<-all_2018 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_18<-all_2018%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+
+us_counties_all_18<-bind_cols(us_cnty_unemp_all_18,us_cnty_unemp_f_18,us_cnty_unemp_M_18)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2018")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_18,here("acs_us_cnty_unemp2018.csv"))
+
+#2017
+
+us_cnty_unemp_M_17<-all_2017 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_17<-all_2017 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_17<-all_2017%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+
+us_counties_all_17<-bind_cols(us_cnty_unemp_all_17,us_cnty_unemp_f_17,us_cnty_unemp_M_17)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2017")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_19,here("acs_us_cnty_unemp2017.csv"))
+
+#2016
+
+us_cnty_unemp_M_16<-all_2016 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_16<-all_2016 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_16<-all_2016%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+
+us_counties_all_16<-bind_cols(us_cnty_unemp_all_16,us_cnty_unemp_f_16,us_cnty_unemp_M_16)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2016")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_16,here("acs_us_cnty_unemp2016.csv"))
+
+#2015
+
+us_cnty_unemp_M_15<-all_2015 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_15<-all_2015 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_15<-all_2015%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+
+us_counties_all_15<-bind_cols(us_cnty_unemp_all_15,us_cnty_unemp_f_15,us_cnty_unemp_M_15)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2015")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_15,here("acs_us_cnty_unemp2015.csv"))
+
+#2014
+
+us_cnty_unemp_M_14<-all_2014 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_14<-all_2014 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_14<-all_2014%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+
+us_counties_all_14<-bind_cols(us_cnty_unemp_all_16,us_cnty_unemp_f_16,us_cnty_unemp_M_16)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2014")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_14,here("acs_us_cnty_unemp2014.csv"))
+
+#2013
+
+us_cnty_unemp_M_13<-all_2013 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_13<-all_2013 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_13<-all_2013%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+
+us_counties_all_13<-bind_cols(us_cnty_unemp_all_13,us_cnty_unemp_f_13,us_cnty_unemp_M_13)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2013")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_13,here("acs_us_cnty_unemp2013.csv"))
+
+#2012
+
+us_cnty_unemp_M_12<-all_2012 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_12<-all_2012 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_12<-all_2012%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+
+us_counties_all_12<-bind_cols(us_cnty_unemp_all_12,us_cnty_unemp_f_12,us_cnty_unemp_M_12)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2012")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_12,here("acs_us_cnty_unemp2012.csv"))
+
+#2011
+
+us_cnty_unemp_M_11<-all_2011 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_11<-all_2011 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_11<-all_2011%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+
+us_counties_all_11<-bind_cols(us_cnty_unemp_all_11,us_cnty_unemp_f_11,us_cnty_unemp_M_11)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2011")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_11,here("acs_us_cnty_unemp2011.csv"))
+
+#2010
+
+us_cnty_unemp_M_10<-all_2010 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_10<-all_2010 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_10<-all_2010%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+us_counties_all_10<-bind_cols(us_cnty_unemp_all_10,us_cnty_unemp_f_10,us_cnty_unemp_M_10)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2010")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_10,here("acs_us_cnty_unemp2010.csv"))
+
+#2009
+
+us_cnty_unemp_M_09<-all_2009 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(m_urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089)*100) %>% 
+  select(GEOID,NAME,m_urate)
+
+us_cnty_unemp_f_09<-all_2009 %>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>% 
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(f_urate=(B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,f_urate)
+
+us_cnty_unemp_all_09<-all_2009%>% 
+   select(!moe) %>% 
+  filter(str_detect(variable,"B23001_004|B23001_008|B23001_015|B23001_022|B23001_029|B23001_036|B23001_043|B23001_050|B23001_057|B23001_064|B23001_071|B23001_076|B23001_081|B23001_086|B23001_011|B23001_018|B23001_025|B23001_032|B23001_039|B23001_046|B23001_053|B23001_060|B23001_067|B23001_074|B23001_079|B23001_084|B23001_089|B23001_094|B23001_101|B23001_108|B23001_115|B23001_122|B23001_129|B23001_136|B23001_143|B23001_150|B23001_157|B23001_162|B23001_167|B23001_172|B23001_090|B23001_097|B23001_104|B23001_111|B23001_118|B23001_125|B23001_132|B23001_139|B23001_146|B23001_153|B23001_160|B23001_165|B23001_170")) %>%
+  pivot_wider(names_from=variable,values_from=estimate) %>% 
+  mutate(urate=(B23001_008+B23001_015+B23001_022+B23001_029+B23001_036+B23001_043+B23001_050+B23001_057+B23001_064+B23001_071+B23001_076+B23001_081+B23001_086+B23001_094+B23001_101+B23001_108+B23001_115+B23001_122+B23001_129+B23001_136+B23001_143+B23001_150+B23001_157+B23001_162+B23001_167+B23001_172)/(B23001_004+B23001_011+B23001_018+B23001_025+B23001_032+B23001_039+B23001_046+B23001_053+B23001_060+B23001_067+B23001_074+B23001_079+B23001_084+B23001_089+B23001_090+B23001_097+B23001_104+B23001_111+B23001_118+B23001_125+B23001_132+B23001_139+B23001_146+B23001_153+B23001_160+B23001_165+B23001_170)*100) %>% 
+  select(GEOID,NAME,urate)
+
+us_counties_all_09<-bind_cols(us_cnty_unemp_all_09,us_cnty_unemp_f_09,us_cnty_unemp_M_09)%>% 
+  rename(full_fips=GEOID...1) %>% 
+  rename(name=NAME...2) %>% 
+  mutate(state_fips=(left(full_fips,2))) %>% 
+  mutate(county_fips=(right(full_fips,3))) %>% 
+  mutate(year=as.numeric("2009")) %>% 
+  select(state_fips,county_fips,full_fips,name,year,urate,f_urate,m_urate)
+
+write_csv(us_counties_all_09,here("acs_us_cnty_unemp2009.csv"))
+```
+
+#Combine years into one df
+```{r}
+unemp_acs_all<-bind_rows(us_counties_all_09,us_counties_all_10,us_counties_all_11,us_counties_all_12,us_counties_all_13,us_counties_all_14,us_counties_all_15,us_counties_all_16,us_counties_all_17,us_counties_all_18,us_counties_all_19)
+
+unemp_acs_all<-unemp_acs_all %>% 
+  arrange(full_fips) %>% 
+  mutate(unemp_rate=urate) %>% 
+  select(state_fips,county_fips,full_fips,year,unemp_rate)
+```
+
+
+```{r}
+unemp_acs_blk<-bind_rows(us_counties_blk_09,us_counties_blk_10,us_counties_blk_11,us_counties_blk_12,us_counties_blk_13,us_counties_blk_14,us_counties_blk_15,us_counties_blk_16,us_counties_blk_17,us_counties_blk_18,us_counties_blk_19)
+
+unemp_acs_ltx<-bind_rows(us_counties_ltx_09,us_counties_ltx_10,us_counties_ltx_11,us_counties_ltx_12,us_counties_ltx_13,us_counties_ltx_14,us_counties_ltx_15,us_counties_ltx_16,us_counties_ltx_17,us_counties_ltx_18,us_counties_ltx_19)
+
+unemp_acs_wht<-bind_rows(us_counties_wht_09,us_counties_wht_10,us_counties_wht_11,us_counties_wht_12,us_counties_wht_13,us_counties_wht_14,us_counties_wht_15,us_counties_wht_16,us_counties_wht_17,us_counties_wht_18,us_counties_wht_19)
+
+```
+
+
+-------------------------RUN TUTORIAL SCRIPTS-----------------------------
+
+```{r}
+source("lib/transition-map-helpers.R")# Albers projection, proj4string
+county_proj <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"
+
+
+
+#
+# Load data.
+#
+
+# Annual unemployment
+unemp <- unemp_acs_all   ##CHANGE THIS TO RUN A DIFFERENT GROUP
+  
+unemp <- unemp[unemp$state_fips != "02" & unemp$state_fips != "15" & unemp$state_fips != "72",  ]
+
+# Lower US boundaries
+usa <- readOGR(here("data/nation/nationp010g/nationp010g.shp"))
+usa_lower <- usa[2,]
+usa_lower_albers <- spTransform(usa_lower, CRS(county_proj))
+
+# US states
+states <- readOGR(here("data/states/cb_2013_us_state_20m/cb_2013_us_state_20m.shp"))
+states_albers <- spTransform(states, CRS(county_proj))
+
+# Lakes
+lakes_world <- readOGR(here("data/lakes/ne_50m_lakes/ne_50m_lakes.shp"))
+lakes_world_albers <- spTransform(lakes_world, CRS(county_proj))
+lakes_albers <- raster::intersect(lakes_world_albers, usa_lower_albers)
+
+# Counties
+counties <- readOGR(here("data/counties/cb_2013_us_county_20m/cb_2013_us_county_20m.shp"))
+counties <- counties[counties$STATEFP != "02" & counties$STATEFP != "15" & counties$STATEFP != "72", ]
+counties_albers <- spTransform(counties, CRS(county_proj))
+
+# Approximate center of each county
+centroids <- SpatialPointsDataFrame(gCentroid(counties_albers, byid=TRUE), counties@data, match.ID=FALSE)
+```
+
+
+```{r}
+#
+# For filtering later.
+# 
+
+xo <- seq(usa_lower_albers@bbox["x", "min"], usa_lower_albers@bbox["x", "max"], length = 600)
+yo <- seq(usa_lower_albers@bbox["y", "min"], usa_lower_albers@bbox["y", "max"], length = 400)
+metric_mat <- matrix(NA, nrow=length(xo), ncol=length(yo), dimnames = list(xo, yo))
+metric_df <- melt(metric_mat)
+metric_df$in_simple <- point.in.SpatialPolygons(metric_df[,1], metric_df[,2], usa_lower_albers)
+usa_lower_mat <- matrix(metric_df$in_simple, nrow=length(xo), ncol=length(yo), dimnames = list(xo, yo)) 
+
+```
+
+```{r}
+# Full FIPS code
+unemp$full_fips <- paste(unemp$state_fips, unemp$county_fips, sep="")
+
+```
+
+```{r}
+#
+# Multiple years
+#
+
+# Map color scale
+breaks <- c(0, 2, 4, 6, 8, 10, 12, 14, 100)
+pal <- colorRampPalette(c("#b9d7ef", "#102d44"))
+col <- pal(length(breaks)-1)
+
+years <- unique(unemp$year)
+frames_per_year <- 2
+frames_so_far <- 0
+```
+
+
+```{r}
+for (yi in 1:length(years)) {
+  
+  unemp_curr <- unemp[unemp$year == years[yi],]
+  centroid_join <- match(unemp_curr$full_fips, as.vector(centroids@data$GEOID))
+  unemp_curr[,c("x", "y")] <- centroids@coords[centroid_join,]
+  
+  # Remove missing counties.
+  unemp_curr <- na.omit(unemp_curr)
+  unemp_curr$unemp_rate <- as.numeric(unemp_curr$unemp_rate)
+  
+  # Interpolate and filter.
+  unemp_curr_smooth <- interp(unemp_curr$x, unemp_curr$y, unemp_curr$unemp_rate, xo=xo,yo=yo, extrap = TRUE, linear=FALSE)
+  unemp_curr_smooth$z[which(usa_lower_mat == FALSE)] <- NA
+  
+  
+  # Not on first year in series.
+  if (yi != 1) {
+    
+    one_tick <- (unemp_curr_smooth[["z"]] - unemp_prev_smooth[["z"]]) / frames_per_year
+    ticker <- unemp_prev_smooth
+    
+    for (j in 1:frames_per_year) {
+      
+      # Increment one tick
+      ticker[["z"]] <- ticker[["z"]] + one_tick
+      
+      png(paste("images/frame", getFrameIndex(frames_so_far), ".png", sep=""), width=700, height=420)
+      par(mar=c(1,1,1,1))
+      image(ticker, col=col, breaks=breaks, asp=1, axes=FALSE, useRaster=TRUE)
+      plot(states_albers, add=TRUE, border="#ffffff", lwd=0.4)
+      plot(lakes_albers, add=TRUE, border=NA, col="#ffffff")
+      
+      dev.off()
+      
+      frames_so_far <- frames_so_far + 1
+    }
+    
+  }
+  
+  unemp_prev_smooth <- unemp_curr_smooth
+  
+}
+```
+
+```{r}
+#
+# Add a legend and year counter.
+#
+
+# Legend limits
+legend_xlim <- c(0, 10)
+legend_ylim <- c(0, 10)
+legend_height <- 1
+legend_cat_width <- (legend_xlim[2] - legend_xlim[1]) / length(col)
+
+# Draw a map
+par(mar=c(0,0,0,0))
+plot(0:1, 0:1, type="n", xlab="", ylab="", axes=FALSE)
+par(list(new=TRUE, plt=c(.05, .95, .05, .95)))
+image(ticker, col=col, breaks=breaks, asp=1, axes=FALSE, useRaster=TRUE)
+plot(states_albers, add=TRUE, border="#ffffff", lwd=0.4)
+plot(lakes_albers, add=TRUE, border=NA, col="#ffffff")
+
+### Legend
+par(list(new=TRUE, plt=c(.015, .285, .015, .260)))
+plot(0, 0, type="n", axes=FALSE, xlim=c(0,10), ylim=c(0,10))
+
+# Year label
+text(5, 6, labels = years[yi], family="sans", cex=3, pos=3)
+
+# Color scale
+text(5, 3, "Unemployment Rate (%)", pos=3, cex=0.9)
+for (k in 1:length(col)) {
+  rect((k-1)*legend_cat_width, 2, k*legend_cat_width, legend_height+2, border="black", col=col[k], lwd=0.6)
+}
+text(0:length(col)*legend_cat_width, 1.2, labels=breaks, family="sans", cex=0.75)
+```
+
+```{r}
+# Add legend to all images
+#
+
+# Map color scale
+breaks <- c(0, 2, 4, 6, 8, 10, 12, 14, 100)
+pal <- colorRampPalette(c("#b9d7ef", "#102d44"))
+col <- pal(length(breaks)-1)
+
+years <- unique(unemp$year)
+frames_per_year <- 3
+frames_so_far <- 0
+
+
+
+for (yi in 1:length(years)) {
+  
+  unemp_curr <- unemp[unemp$year == years[yi],]
+  centroid_join <- match(unemp_curr$full_fips, as.vector(centroids@data$GEOID))
+  unemp_curr[,c("x", "y")] <- centroids@coords[centroid_join,]
+  
+  # Remove missing counties.
+  unemp_curr <- na.omit(unemp_curr)
+  unemp_curr$unemp_rate <- as.numeric(unemp_curr$unemp_rate)
+  
+  # Interpolate and filter.
+  unemp_curr_smooth <- interp(unemp_curr$x, unemp_curr$y, unemp_curr$unemp_rate, xo = xo, yo = yo, extrap = TRUE, linear=FALSE)
+  unemp_curr_smooth$z[which(usa_lower_mat == FALSE)] <- NA
+  
+  
+  # Not on first year in series.
+  if (yi != 1) {
+    
+    one_tick <- (unemp_curr_smooth[["z"]] - unemp_prev_smooth[["z"]]) / frames_per_year
+    ticker <- unemp_prev_smooth
+    
+    for (j in 1:frames_per_year) {
+      
+      # Increment one tick
+      ticker[["z"]] <- ticker[["z"]] + one_tick
+      
+      png(paste("images/frame", getFrameIndex(frames_so_far), ".png", sep=""), width=700, height=420)
+      par(mar=c(1,1,1,1))
+      image(ticker, col=col, breaks=breaks, asp=1, axes=FALSE, useRaster=TRUE)
+      plot(states_albers, add=TRUE, border="#ffffff", lwd=0.4)
+      plot(lakes_albers, add=TRUE, border=NA, col="#ffffff")
+
+      ### Legend
+      par(list(new=TRUE, plt=c(.015, .285, .015, .260)))
+      plot(0, 0, type="n", axes=FALSE, xlim=c(0,10), ylim=c(0,10))
+      
+      # Year label
+      text(5, 6, labels = years[yi], family="sans", cex=3, pos=3)
+      
+      # Color scale
+      text(5, 3, "Unemployment Rate (%)", pos=3, cex=0.9)
+      for (k in 1:length(col)) {
+        rect((k-1)*legend_cat_width, 2, k*legend_cat_width, legend_height+2, border="black", col=col[k], lwd=0.6)
+      }
+      text(0:length(col)*legend_cat_width, 1.2, labels=breaks, family="sans", cex=0.75)
+      
+      
+      dev.off()
+      
+      frames_so_far <- frames_so_far + 1
+    }
+    
+  }
+  
+  unemp_prev_smooth <- unemp_curr_smooth
+  
+}
+
+
+```
+
+Animation
+```{r}
+library(animation)
+```
+
+```{r}
+# Animation options
+ani.options(outdir = paste(here("/images"),interval=0.1, ani.width=700, ani.height=420))
+
+
+#Pull from wd folder and make mp4
+
+imgs <- list.files(pattern="*.png")
+saveVideo({
+  for(img in imgs){
+    im <- magick::image_read(img)
+    plot(as.raster(im))
+  }  
+})
+```
+
+Save GIF
+```{r}
+
+imgs <- list.files(pattern="*.png")
+saveGIF({
+  for(img in imgs){
+    im <- magick::image_read(img)
+    plot(as.raster(im))
+  }  
+})
+
+```
+
+
+
+
+
+
+
+
