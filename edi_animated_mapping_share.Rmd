@@ -25,7 +25,8 @@ options(scipen=999)
 
 #Load alternate data as needed
 
-Method 1: BLS LAUS data -- https://github.com/btskinner/county_unemploy/blob/master/county_unemploy.R
+Method 1: 
+BLS LAUS data -- https://github.com/btskinner/county_unemploy/blob/master/county_unemploy.R
 
 ```{r}
 df<-read_csv(here("county_unemploy.csv"))
