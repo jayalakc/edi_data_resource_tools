@@ -1,0 +1,201 @@
+---
+title: "edi_notes"
+author: "Jordan Ayala"
+date: "11/6/2021"
+output: html_document
+---
+
+```{r}
+library(here)
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+
+library(scales)
+library(RColorBrewer)
+library(viridis)
+
+library(plotly)
+library(htmlwidgets)
+
+library(ggpubr)
+library(ggrepel)
+```
+
+```{r}
+options(scipen=999)
+```
+
+Read in data from Fred?
+```{r}
+lfpr_oct2021<-read_csv(here("fred_lfpr_oct2021.csv"))
+```
+
+#LFPR chart
+```{r}
+lfpr_chart<-lfpr_oct2021 %>% 
+  ggplot(aes(x=DATE,y=`CIVPART`))+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="An unchanging labor force participation rate", subtitle = "Labor force participation rate (civilian), 2000 - Oct. 2021, seasonally adjusted",caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Percent",x="Date (monthly)")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="top")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))
+
+
+lfpr_chart
+
+ggsave("lfpr_chart_oct2021.png",width=7.5,height=3.5)
+```
+
+#Reasons, as pct of total unemployed
+Monthly with "Jan"  scale_x_date(date_labels = "%b-%Y")+
+
+```{r}
+unemp_reason_chart<-lfpr_oct2021 %>% 
+  ggplot(aes(x=DATE,y=`CIVPART`))+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="An unchanging labor force participation rate", subtitle = "Labor force participation rate (civilian), 2000 - Oct. 2021, seasonally adjusted",caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Percent",x="Month")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="top")+
+  theme_bw()
+
+unemp_reason_chart
+
+ggsave("unemp_reason_chart_oct2021.png",width=7.5,height=3.5)
+```
+
+Stacked area chart (timeseries)
+
+read in tables
+```{r}
+job_losers<-read_csv(here("job_losers_oct2021.csv")) 
+job_leavers<-read_csv(here("job_leavers_oct2021.csv"))
+reentrants<-read_csv(here("reentrants_oct2021.csv"))
+new_entrants<-read_csv(here("new_entrants_oct2021.csv"))
+```
+
+
+format tables
+```{r}
+job_losers2<-job_losers %>% 
+  dplyr::rename("(1) Job losers" = LNS13023622) 
+job_leavers2<-job_leavers %>% 
+  dplyr::rename("(3) Job leavers" = LNS13023706) 
+reentrants2<-reentrants %>% 
+  dplyr::rename("(2) Reentrants"=LNS13023558)
+new_entrants2<-new_entrants %>% 
+  dplyr::rename("(4) New entrants"=LNS13023570)
+
+#combine
+reasons<-bind_cols(job_losers2,job_leavers2,reentrants2,new_entrants2) %>% 
+  dplyr::select("DATE...1","(1) Job losers","(2) Reentrants","(3) Job leavers","(4) New entrants") %>% 
+  dplyr::rename(Date=DATE...1)
+```
+
+```{r}
+# labels and breaks for X axis text
+brks <- reasons$Date[seq(1, length(reasons$Date), 12)]
+lbls <- lubridate::year(brks)
+
+# plot
+reasons_chart<-ggplot(reasons, aes(x=Date)) + 
+  geom_area(aes(y=`(1) Job losers`+`(2) Reentrants`+`(3) Job leavers`+`(4) New entrants`, fill="(1) Job losers")) +
+  geom_area(aes(y=`(2) Reentrants`+`(3) Job leavers`+`(4) New entrants`, fill="(2) Reentrants")) + 
+  geom_area(aes(y=`(3) Job leavers`+`(4) New entrants`, fill="(3) Job leavers")) +
+  geom_area(aes(y=`(4) New entrants`, fill="(4) New entrants")) + 
+  labs(title="Job losers remain the largest segment of the unemployed", 
+       subtitle="Unemployed by reason for unemployment, 2010 - Oct. 2021", 
+       caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis", 
+       y="Share of total unemployed (%)",x="Date (monthly)") +  # title and caption
+  scale_x_date(labels = lbls, breaks = brks) +  # change to monthly ticks and labels
+  scale_fill_manual(name="", 
+                    values = c("(1) Job losers"="#fdcf60", "(2) Reentrants"="#192954","(3) Job leavers"="#666666","(4) New entrants"="#be2b29")) +  # line color
+  theme(panel.grid.minor = element_blank())+ # turn off minor grid
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))
+
+reasons_chart
+
+ggsave("reasons_chart.png",width=7.5,height=3.5)
+```
+
+#UE/UN chart
+
+read in data
+```{r}
+u_e<-read_csv(here("u_e_oct2021.csv"))
+u_n<-read_csv(here("u_n_oct2021.csv"))
+```
+
+Create ue/un indicator
+```{r}
+ue_un<-bind_cols(u_e,u_n) %>% 
+  dplyr::rename(Date=`DATE...1`) %>% 
+  dplyr::rename(UE=LNS17100000) %>% 
+  dplyr::rename(UN=LNS17900000) %>% 
+  dplyr::select(Date,UE,UN) %>% 
+  mutate("UE/UN"=UE/UN)
+
+```
+
+```{r}
+ue_un_chart<-ue_un %>% 
+  ggplot(aes(x=Date,y=`UE/UN`))+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="Unemployed workers are less likely to transition into employment", subtitle = "Flows from unemployed to employed / unemployed to not-in-labor-force, 2010 - Oct. 2021",caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+  geom_hline(yintercept=1,color="black",size=1, linetype="dashed")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="top")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))
+
+
+ue_un_chart
+
+ggsave("ue_un_chart_oct2021.png",width=7.5,height=3.5)
+```
+
+#Race ethnicity chart
+
+```{r}
+white<-read_csv(here("white_u3_oct2021.csv")) %>% 
+  dplyr::rename(u3=LNS14000003) %>% 
+  mutate(Group = "white")
+
+black<-read_csv(here("black_u3_oct2021.csv")) %>% 
+  dplyr::rename(u3=LNS14000006) %>% 
+  mutate(Group = "Black")  
+
+asian<-read_csv(here("asian_u3_oct2021.csv"))%>% 
+  dplyr::rename(u3=LNU04032183) %>% 
+  mutate(Group = "Asian")
+
+hispanic<-read_csv(here("hispanic_u3_oct2021.csv"))%>% 
+  dplyr::rename(u3=LNS14000009) %>% 
+  mutate(Group = "Hispanic/Latine") 
+
+u3_race<-bind_rows(white,black,asian,hispanic)
+
+
+```
+
+
+```{r}
+u3_race<-u3_race %>% 
+  mutate(Group=fct_reorder(Group,desc(u3)))
+
+
+u3_race_chart<-ggplot(u3_race,aes(x=DATE,y=u3,color=Group))+
+  geom_line(size=1)+
+  scale_color_manual(
+    values=c("#fdcf60","#192954","#be2b29","#666666"))+
+  labs(title="Stratification in unemployment rates across groups",subtitle ="Unemployment rates by race and ethinicity, 2010 - Oct. 2021, seasonally adjusted", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Unemployment rate",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))
+
+u3_race_chart
+ggsave("u3_race_chart.png",width=7.5,height=3.5)
+
+```
+
