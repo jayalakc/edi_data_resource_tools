@@ -20,21 +20,683 @@ library(htmlwidgets)
 
 library(ggpubr)
 library(ggrepel)
+
+library(gridExtra)
 ```
 
 ```{r}
 options(scipen=999)
 ```
 
-Read in data from Fred?
+Interactive charts
 ```{r}
-lfpr_oct2021<-read_csv(here("fred_lfpr_oct2021.csv"))
+#Create a plotly account: https://plot.ly/
+#Create API Keys: https://plot.ly/settings/api
+
+Sys.setenv("plotly_username"="jayala_edi")
+Sys.setenv("plotly_api_key"="zi1v41Xlm0c2p0CdRZEJ")
+
+```
+
+
+--------
+EDI Note April 1 2022
+
+```{r}
+un<-read_csv(here("unemp_series_april12022.csv"))
+```
+ 
+
+
+
+```{r}
+un2<-un %>% 
+  rename(Date=DATE) %>% 
+  rename("Seeking Employment"=UNEMPLOY)
+
+```
+
+```{r}
+un_chart<-ggplot(un2,aes(x=Date,y=`Seeking Employment`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+    geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(subtitle ="Levels: unemployed + NILF want a job now + PT for economic reasons, 2008 - March 2022", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Level in thousands",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+200
+
+un_chart
+ggsave("wantwork_chart.png",width=8,height=3.2)
+
+```
+
+```{r}
+un_chart<-ggplot(un2,aes(x=Date,y=`Seeking Employment`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+    geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="Total workers wanting (more) employment",subtitle ="Levels: unemployed + NILF want a job now + PT for economic reasons, 2008 - March 2022", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Level in thousands",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+
+un_chart
+ggsave("wantwork_chart.png",width=8,height=3.2)
+
+```
+
+```{r}
+un_chart_interactive<-ggplotly(un_chart, width = 500, height = 250)
+
+api_create(un_chart_interactive, filename = "Seeking employment April 1 2022")
+```
+
+
+```{r}
+f1<-read_csv(here("flows_april2022.csv"))
+
+
+f4<-f1 %>% 
+  mutate(flows=LNS17200000/LNS17100000) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Flows from NILF to employed / unemployed to employed"=flows)
+```
+
+```{r}
+
+aprilflows_chart<-ggplot(f4,aes(x=Date,y=`Flows from NILF to employed / unemployed to employed`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+      geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(subtitle="2008 - Mar 2022",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Rate",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(8),expand = expansion(mult = c(0, 0)))+
+  geom_hline(yintercept=1,color="black",size=1, linetype="dashed")
+
+aprilflows_chart
+
+ggsave("flows_chart_apr2022.png",width=7.5,height=3)
+```
+
+
+```{r}
+aprilflows_chart_interactive2<-ggplotly(aprilflows_chart, width = 500, height = 250)
+
+api_create(aprilflows_chart_interactive2, filename = "Flows April 2022")
+```
+
+
+END APRIL 2022 Note
+--------
+
+Charts for EDI policy note Good Jobs for All Newburgh
+
+```{r}
+jo<-read_csv(here("job_openings.csv"))
+un<-read_csv(here("unemp_series.csv"))
+```
+
+Clean and prep for charts
+```{r}
+jo2<-jo %>% 
+  rename(Date=DATE) %>% 
+  rename("Job Openings"=JTSJOL) %>% 
+  rename(levels=`Job Openings`) %>% 
+  mutate(Series="Job Openings")
+
+un2<-un %>% 
+  rename(Date=DATE) %>% 
+  mutate("Seeking Employment"=UNEMPLOY+NILFWJN+LNS12032194) %>% 
+  select(Date,"Seeking Employment") %>% 
+  rename(levels=`Seeking Employment`) %>% 
+  filter(Date<="2021-12-01") %>% 
+  filter(Date>="2000-12-01") %>% 
+    mutate(Series="Seeking employment")
+
+
+jo_un<-bind_rows(jo2,un2)
+```
+
+
+```{r}
+jo_un_chart<-ggplot(jo_un,aes(x=Date,y=levels,color=Series))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1)+
+  scale_color_manual(
+    values=c("#192954","#be2b29"))+
+  labs(title="Not enough job openings for all those seeking employment",subtitle ="Job openings with unemployed + NILF want a job now + PT for economic reasons, Dec 2000 - Dec 2021", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Level in thousands",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+
+jo_un_chart
+ggsave("job_openings_wantwork_chart.png",width=8,height=3.2)
+
+```
+
+```{r}
+newburgh_urate<-read_csv(here("newburgh_urate_bls.csv"))
+```
+
+```{r}
+urate<-newburgh_urate %>% 
+  pivot_longer(2:4,names_to="Series",values_to="U-3")
+```
+
+```{r}
+u3_chart<-ggplot(urate,aes(x=Date,y=`U-3`,color=Series))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1)+
+  scale_color_manual(
+    values=c("#192954","#be2b29","#fdcf60"))+
+  labs(title="Unemployment rate comparison",subtitle ="Jan 2019 - Dec 2021", caption = "U.S. BLS, retrieved from mySidewalk Inc",y="Unemployment rate (%)",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(10))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+
+u3_chart
+ggsave("newburgh_u3comp_chart.png",width=8,height=3.5)
+
+```
+
+```{r}
+pov_age<-read_csv(here("poverty_age_newburgh.csv"))
+```
+
+```{r}
+theme_set(theme_bw())
+
+poverty_age_newburgh1<-pov_age %>% 
+  within(pov_age,
+         Group<-factor(Group,
+                      levels=names(sort(table("Newburgh, NY"),
+                                decreasing=TRUE))))
+
+pov_age_chart<-ggplot(data=pov_age, aes(x=Group, y=`Newburgh, NY`)) +
+  labs(title="Poverty income by age group",subtitle="U.S. Census Bureau 2015-2019",caption="U.S. Census Bureau retrieved from mySidewalk Inc")+
+  geom_bar(stat="identity",width=0.5,fill="#192954")+
+  geom_text(aes(label=`Newburgh, NY`),position=position_dodge(width=0.9), vjust=.25,hjust=1.25,color="white")+
+  theme(axis.text.x=element_text(angle=0,vjust=0.5,size=12))+
+  ylab("People in households with poverty income")+
+  xlab("Group")+
+  coord_flip()
+
+pov_age_chart
+
+ggsave("newburgh_pov_age.png",width=7.5,height=3.2)
+```
+
+-----------------Charts for 3/4/2022 EDI Note-------------------
+
+```{r}
+b_w_u3<-read_csv(here("LNU04000032.csv"))
+
+f1<-read_csv(here("LNS17200000.csv"))
+f2<-read_csv(here("LNS17100000.csv"))
+
+f3<-full_join(f1,f2,by="DATE")
+
+f4<-f3 %>% 
+  mutate(flows=LNS17200000/LNS17100000) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Flows from NILF to employed / unemployed to employed"=flows)
+```
+
+
+```{r}
+bw_df2<-b_w_u3 %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("U-3 among Black or African American Women, 20 yrs & over"=LNU04000032)
+
+bw_u3_chart<-ggplot(bw_df2,aes(x=Date,y=`U-3 among Black or African American Women, 20 yrs & over`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs( subtitle="2020 - Feb 2022",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Unemployment Rate (%)",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(8),expand = expansion(mult = c(0, 0)))
+
+bw_u3_chart
+
+ggsave("bw_u3_chart_2022.png",width=7.5,height=3)
+```
+
+```{r}
+bw_u3_chart_interactive<-ggplotly(bw_u3_chart, width = 500, height = 250)
+
+api_create(bw_u3_chart_interactive, filename = "Black women u-3 mar 2022 1")
+```
+
+
+```{r}
+
+flows_chart<-ggplot(f4,aes(x=Date,y=`Flows from NILF to employed / unemployed to employed`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(subtitle="Feb 1990 - 2022",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Rate",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(8),expand = expansion(mult = c(0, 0)))+
+  geom_hline(yintercept=1,color="black",size=1, linetype="dashed")
+
+flows_chart
+
+ggsave("flows_chart_mar2022.png",width=7.5,height=3)
+```
+
+
+```{r}
+flows_chart_interactive2<-ggplotly(flows_chart, width = 500, height = 250)
+
+api_create(flows_chart_interactive2, filename = "Flows 2 mar 2022")
+```
+
+-----------------Charts for 2/4/2022 EDI Note-------------------
+
+```{r}
+df1<-read_csv(here("BLS COVID Tables.csv"))
+df2<-read_csv(here("series1.csv")) %>% 
+    mutate(Date=as_date(Date))
+df3<-bind_rows(df1,df2)
+```
+In the last 4 weeks -- share
+
+
+values=c("#192954","#fdcf60","#be2b29","#666666"))+
+```{r}
+feb22note_chart<-ggplot(df3,aes(x=Date,y=Series,color=Category))+
+  geom_line(size=1)+
+  scale_color_manual(
+    values=c("#be2b29","#192954"))+
+  labs(subtitle = "In the last four weeks, May 2020 - Jan 2022",caption="U.S. Census Bureau, Household Pulse Survey",y="Share (%)",x="Date")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank())+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11),expand = expansion(mult = c(0,.03)))+
+  theme(legend.position="bottom",legend.title = element_blank())+
+  guides(colour = guide_legend(nrow = 2))
+
+feb22note_chart
+
+ggsave("feb22note_chart.png",width=7.5,height=3.5)
+```
+
+Bar chart or line chart
+```{r}
+feb<-data.frame(Date=c("Dec 2021","Jan 2022","Dec 2021","Jan 2022"),Category=c("Unable to Work Because Employer Closed of Lost Business","Unable to Work Because Employer Closed of Lost Business","NILF Who Did Not Look for Work","NILF Who Did Not Look for Work"),Series=c(3101,6043,1121,1801))
+```
+
+U3 Jan 2022 = 6513
+```{r}
+febchart<-ggplot(feb,aes(x=Category, y=Series, fill=Date)) +
+  geom_bar(stat="identity", width=0.35, position="dodge")+
+  scale_fill_manual(values=c("#192954","#be2b29"))+
+  geom_hline(yintercept=6513,color="black",size=1, linetype="dashed")+
+  annotate(geom="text", label="Unemployed Jan 2022: 6,513", x=1, y=6100, vjust=0)+
+  labs(subtitle = "In the last four weeks, Dec 2021 - Jan 2022",caption="U.S. Census Bureau, Household Pulse Survey",y="Thousands of persons",x="Category")+
+  theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank())+
+  theme_bw()+
+  theme(legend.position="bottom",legend.title = element_blank())+
+  guides(colour = guide_legend(nrow = 4))
+
+febchart
+
+ggsave("febchart2022.png",width=7,height=4)
+```
+
+```{r}
+febchart_interactive<-ggplotly(febchart, width = 800, height = 350)
+
+api_create(febchart_interactive, filename = "Feb 2022 EDI Note")
+```
+
+
+End charts for Feb 2022 EDI Note on BLS
+
+--------------------------Dirk WP chart---------------------------
+
+```{r}
+wage<-read_csv(here("A4476C0A052NBEA.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename(Series=A4476C0A052NBEA_PC1) %>% 
+  mutate(Category="Wage & salary accruals per full-time equivalent employee: government")
+
+
+cpi<-read_csv(here("CPIAUCSL.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename(Series=CPIAUCSL_PC1) %>% 
+  mutate(Category="CPI for all urban consumers: all items in U.S. City")
+
+dirk_final<-bind_rows(wage,cpi)
+```
+
+```{r}
+dirk_chart<-ggplot(dirk_final,aes(x=Date,y=Series,color=Category))+
+  geom_rect(xmin=as.Date("1953-07-01"), xmax=as.Date("1954-05-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1957-08-01"), xmax=as.Date("1958-04-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1960-04-01"), xmax=as.Date("1961-02-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1969-12-01"), xmax=as.Date("1970-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1973-11-01"), xmax=as.Date("1975-03-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1980-01-01"), xmax=as.Date("1980-07-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1981-07-01"), xmax=as.Date("1982-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1990-07-01"), xmax=as.Date("1991-03-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1)+
+  scale_color_manual(
+    values=c("black","#6f6f6f"))+
+  labs(subtitle = "Jan. 1950 - Jan. 2020, seasonally adjusted, CPI for all urban consumers",caption="U.S. BEA and U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Percent change from a year ago",x="Date")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank())+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11),expand = expansion(mult = c(0,0)))+
+  theme(legend.position="bottom",legend.title = element_blank())
+dirk_chart
+
+ggsave("dirk_chart.png",width=7.6,height=3)
+```
+
+END Dirk WP charts
+
+
+-------------------------Charts for 1/7/2022 EDI Note------------------------
+
+```{r}
+ft<-read_csv(here("full_time_jan7_2022_fred.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Employed, Usually Work Full-time"=LNS12500000)
+
+pt<-read_csv(here("part_time_jan7_2022_fred.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Employed, Usually Work Part-time"=LNS12600000) 
+
+pt_econ_reasons<-read_csv(here("pt_econ_reasons_jan7_2022_fred.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Part-time for Economic Reasons"=LNS12032194)
+
+pt_2000<-read_csv(here("part_time_2000_jan7_2022_fred.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Employed, Usually Work Part-time"=LNS12600000)
+
+emp_lesshs<-read_csv(here("emp_lessthan_hs_jan7_2022_fred.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Less Than a High School Diploma"=LNS12027659)
+```
+
+```{r}
+ft_chart<-ggplot(ft,aes(x=Date,y=`Employed, Usually Work Full-time`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="Employed, Usually Work Full-time",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  theme(axis.title.y=element_blank())+
+  scale_x_date(breaks = pretty_breaks(11),expand = expansion(mult = c(0, .1)))+
+  scale_y_continuous(label=comma)
+
+pt_chart<-ggplot(pt,aes(x=Date,y=`Employed, Usually Work Part-time`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="Employed, Usually Work Part-time",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  theme(axis.title.y=element_blank())+
+  scale_x_date(breaks = pretty_breaks(11),expand = expansion(mult = c(0, .1)))+
+  scale_y_continuous(label=comma)
+
+ggsave("ft_pt_jan7_2022.png",width=7.5,height=4.5,arrangeGrob(ft_chart, pt_chart))
+```
+
+```{r}
+ft_jan7_2022_interactive<-ggplotly(ft_chart, width = 500, height = 250)
+
+api_create(ft_pt_jan7_2022_interactive, filename = "Full-time Employment Levels, 2007-Dec 2021")
+```
+
+```{r}
+pt_jan7_2022_interactive<-ggplotly(pt_chart, width = 500, height = 250)
+
+api_create(pt_jan7_2022_interactive, filename = "Part-time Employment Levels, 2007-Dec 2021")
+```
+
+```{r}
+ptecon_pt<-full_join(pt_econ_reasons,pt_2000,by="Date")
+
+ptecon_pt2<-ptecon_pt %>% 
+  mutate("Part-time for Economic Reasons / Employed Usually work Part-time"=`Part-time for Economic Reasons`/`Employed, Usually Work Part-time`) %>% 
+  mutate(across(`Part-time for Economic Reasons / Employed Usually work Part-time`, round, 4))
+```
+
+```{r}
+ptecon_pt_chart<-ptecon_pt2 %>% 
+  ggplot(aes(x=Date,y=`Part-time for Economic Reasons / Employed Usually work Part-time`))+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="top")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))
+
+ptecon_pt_chart
+
+ggsave("ptecon_pt_chart_jan7_2022.png",width=7.5,height=2.7)
+```
+
+```{r}
+ptecon_pt_chart_interactive<-ggplotly(ptecon_pt_chart, width = 500, height = 250)
+
+api_create(ptecon_pt_chart_interactive, filename = "Part-time Economic Reasons Part-time Employed, 2007-Dec 2021")
+```
+
+#Figure 3: Employment Level for Workers Without a High School Diploma, 25 Years & Over
+```{r}
+emp_lesshs_chart<-emp_lesshs %>% 
+  ggplot(aes(x=Date,y=`Less Than a High School Diploma`))+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="top")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma)
+
+
+emp_lesshs_chart
+
+ggsave("emp_lesshs_chart_jan7_2022.png",width=7.5,height=2.7)
+```
+
+```{r}
+emp_lesshs_chart_interactive<-ggplotly(emp_lesshs_chart, width = 500, height = 250)
+
+api_create(emp_lesshs_chart_interactive, filename = "Final Employment Level for Workers Without a High School Diploma, 25 Years & Over")
+```
+
+
+-----------------------------------Charts for Pavlina GIMMS paper----------------------
+
+```{r}
+pi<-read_csv(here("pi_2013_nov2021.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename(Dollars=PI) %>% 
+  mutate(Category="Personal Income")
+gdp<-read_csv(here("gdp_2013_nov2021.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename(Dollars=GDP) %>% 
+  mutate(Category="GDP")
+emp_level<-read_csv(here("emp_level_2013_nov2021.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename(Level=CE16OV)
+lfpr<-read_csv(here("lfpr_2013_nov2021.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename(LFPR=CIVPART)
+```
+
+```{r}
+pi2<-subset(pi,Date<"2020-01-01") 
+pi3<-subset(pi2,Date>"2017-09-01") %>% 
+  mutate(Category="PI Trend")
+
+gdp2<-subset(gdp,Date<"2020-01-01") 
+gdp3<-subset(gdp2,Date>"2017-09-01") %>% 
+  mutate(Category="GDP Trend")
+  
+```
+
+#Personal income and GDP chart
+```{r}
+pi_gdp<-bind_rows(pi,gdp)
+
+write_csv(pi_gdp,here("pi_gdp_all.csv"))
+
+pi_gdp2<-bind_rows(pi3,gdp3)
+write_csv(pi_gdp2,here("pi_gdp.csv"))
+
+
+```
+
+```{r}
+pi_gdp_fore<-read_csv(here("pi_gdp_fore.csv"))
+
+
+pi_gdp_final<-bind_rows(pi_gdp,pi_gdp_fore)
+
+pi_gdp_chart<-ggplot(pi_gdp_final,aes(x=Date,y=`Dollars`,color=Category))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(aes(linetype=Category),size=1)+
+  scale_color_manual(
+    values=c("black","black","#6f6f6f","#6f6f6f"))+
+  scale_linetype_manual(values=c("solid","dashed","solid","dashed"))+
+  labs(title="Personal Income and GDP", subtitle = "Personal Income, 2013 - Oct 2021 | GDP, 2013 - Q3 2021, seasonally adjusted",caption="U.S. BEA, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Billions of dollars",x="Date")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank())+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+  theme(legend.position="bottom",legend.title = element_blank())+
+  scale_y_continuous(label=comma,breaks = seq(12000,26000,by=4000))
+
+pi_gdp_chart
+
+ggsave("pi_gdp_chart_2021.png",width=7.5,height=3)
+
+```
+
+```{r}
+emp_level_chart<-emp_level %>% 
+  ggplot(aes(x=Date,y=Level))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="black")+
+  labs(title="Employment level", subtitle = "2013 - Nov 2021, seasonally adjusted",caption="U.S. BEA, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Billions of dollars",x="Date (monthly)")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="top")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma,breaks = seq(12000,26000,by=4000))
+
+emp_level_chart
+
+ggsave("emp_level_chart_nov2021.png",width=7.5,height=3)
+```
+
+#Employment level chart
+```{r}
+emp_level_chart<-emp_level %>% 
+  ggplot(aes(x=Date,y=Level))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="black")+
+  labs(title="Employment level", subtitle = "2013 - Nov 2021, seasonally adjusted",caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="top")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma,breaks = seq(132000,160000,by=4000))
+
+emp_level_chart
+
+ggsave("emp_level_chart_nov2021.png",width=7.5,height=3)
+```
+
+#LFPR chart
+```{r}
+lfpr_chart<-lfpr %>% 
+  ggplot(aes(x=Date,y=LFPR))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="black")+
+  labs(title="Labor force participation rate", subtitle = "Civilian, 2013 - Nov 2021, seasonally adjusted",caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Percent",x="Date (monthly)")+
+    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="top")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))
+
+lfpr_chart
+
+ggsave("lfpr_chart_nov2021.png",width=7.5,height=3)
+```
+
+-----------------------------------
+
+```{r}
+lfpr_oct2021<-read_csv(here("fred_lfpr_oct2021.csv")) %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename(LFPR=CIVPART)
 ```
 
 #LFPR chart
 ```{r}
 lfpr_chart<-lfpr_oct2021 %>% 
-  ggplot(aes(x=DATE,y=`CIVPART`))+
+  ggplot(aes(x=Date,y=LFPR))+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
   geom_line(size=1,color="#be2b27")+
   labs(title="An unchanging labor force participation rate", subtitle = "Labor force participation rate (civilian), 2000 - Oct. 2021, seasonally adjusted",caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Percent",x="Date (monthly)")+
     theme(axis.text.x = element_text(angle=45, vjust=0.5),  
@@ -42,28 +704,18 @@ lfpr_chart<-lfpr_oct2021 %>%
   theme_bw()+
   scale_x_date(breaks = pretty_breaks(11))
 
-
 lfpr_chart
 
 ggsave("lfpr_chart_oct2021.png",width=7.5,height=3.5)
 ```
 
-#Reasons, as pct of total unemployed
-Monthly with "Jan"  scale_x_date(date_labels = "%b-%Y")+
-
 ```{r}
-unemp_reason_chart<-lfpr_oct2021 %>% 
-  ggplot(aes(x=DATE,y=`CIVPART`))+
-  geom_line(size=1,color="#be2b27")+
-  labs(title="An unchanging labor force participation rate", subtitle = "Labor force participation rate (civilian), 2000 - Oct. 2021, seasonally adjusted",caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Percent",x="Month")+
-    theme(axis.text.x = element_text(angle=45, vjust=0.5),  
-        panel.grid.minor = element_blank(),legend.position="top")+
-  theme_bw()
+lfpr_chart_interactive<-ggplotly(lfpr_chart, width = 500, height = 250)
 
-unemp_reason_chart
-
-ggsave("unemp_reason_chart_oct2021.png",width=7.5,height=3.5)
+api_create(lfpr_chart_interactive, filename = "LFPR 2000-Oct 2021")
 ```
+
+#Reasons, as pct of total unemployed
 
 Stacked area chart (timeseries)
 
@@ -120,6 +772,12 @@ reasons_chart
 ggsave("reasons_chart.png",width=7.5,height=3.5)
 ```
 
+```{r}
+reasons_chart_interactive<-ggplotly(reasons_chart, width = 700, height = 250,tooltip = "Date")
+
+api_create(reasons_chart_interactive, filename = "Reasons for Unemployment 2010-Oct 2021")
+```
+
 #UE/UN chart
 
 read in data
@@ -135,13 +793,16 @@ ue_un<-bind_cols(u_e,u_n) %>%
   dplyr::rename(UE=LNS17100000) %>% 
   dplyr::rename(UN=LNS17900000) %>% 
   dplyr::select(Date,UE,UN) %>% 
-  mutate("UE/UN"=UE/UN)
+  mutate("UE/UN"=UE/UN) %>% 
+  mutate(across(`UE/UN`, round, 2))
 
 ```
 
 ```{r}
 ue_un_chart<-ue_un %>% 
   ggplot(aes(x=Date,y=`UE/UN`))+
+    geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
   geom_line(size=1,color="#be2b27")+
   labs(title="Unemployed workers are less likely to transition into employment", subtitle = "Flows from unemployed to employed / unemployed to not-in-labor-force, 2010 - Oct. 2021",caption="U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
   geom_hline(yintercept=1,color="black",size=1, linetype="dashed")+
@@ -156,41 +817,48 @@ ue_un_chart
 ggsave("ue_un_chart_oct2021.png",width=7.5,height=3.5)
 ```
 
-#Race ethnicity chart
+```{r}
+ue_un_chart_interactive<-ggplotly(ue_un_chart, width = 700, height = 250)
 
+api_create(ue_un_chart_interactive, filename = "Unemployment Flows 2010-Oct 2021")
+```
+
+#Race ethnicity chart
 ```{r}
 white<-read_csv(here("white_u3_oct2021.csv")) %>% 
-  dplyr::rename(u3=LNS14000003) %>% 
+  dplyr::rename(`U-3`=LNS14000003) %>% 
   mutate(Group = "white")
 
 black<-read_csv(here("black_u3_oct2021.csv")) %>% 
-  dplyr::rename(u3=LNS14000006) %>% 
+  dplyr::rename(`U-3`=LNS14000006) %>% 
   mutate(Group = "Black")  
 
 asian<-read_csv(here("asian_u3_oct2021.csv"))%>% 
-  dplyr::rename(u3=LNU04032183) %>% 
+  dplyr::rename(`U-3`=LNU04032183) %>% 
   mutate(Group = "Asian")
 
 hispanic<-read_csv(here("hispanic_u3_oct2021.csv"))%>% 
-  dplyr::rename(u3=LNS14000009) %>% 
+  dplyr::rename(`U-3`=LNS14000009) %>% 
   mutate(Group = "Hispanic/Latine") 
 
-u3_race<-bind_rows(white,black,asian,hispanic)
+u3_race<-bind_rows(white,black,asian,hispanic) %>% 
+    dplyr::rename(Date=DATE)
 
 
 ```
 
-
 ```{r}
 u3_race<-u3_race %>% 
-  mutate(Group=fct_reorder(Group,desc(u3)))
+  mutate(Group=fct_reorder(Group,desc(`U-3`)))
 
 
-u3_race_chart<-ggplot(u3_race,aes(x=DATE,y=u3,color=Group))+
+u3_race_chart<-ggplot(u3_race,aes(x=Date,y=`U-3`,color=Group))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
   geom_line(size=1)+
   scale_color_manual(
-    values=c("#fdcf60","#192954","#be2b29","#666666"))+
-  labs(title="Stratification in unemployment rates across groups",subtitle ="Unemployment rates by race and ethinicity, 2010 - Oct. 2021, seasonally adjusted", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Unemployment rate",x="Date (monthly)")+
+    values=c("#192954","#fdcf60","#be2b29","#666666"))+
+  labs(title="Stratification in unemployment rates across groups",subtitle ="Unemployment rates by race and ethinicity, 2010 - Oct. 2021, seasonally adjusted", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Unemployment rate (%)",x="Date (monthly)")+
   theme_bw()+
   scale_x_date(breaks = pretty_breaks(11))
 
@@ -199,3 +867,229 @@ ggsave("u3_race_chart.png",width=7.5,height=3.5)
 
 ```
 
+```{r}
+u3_race_chart_interactive<-ggplotly(u3_race_chart, width = 700, height = 250)
+
+api_create(u3_race_chart_interactive, filename = "Unemployment by Group 2010-Oct 2021")
+```
+
+
+#Dec 3 2021--------------------
+
+Read in data from Fred
+```{r}
+local_all<-read_csv(here("local_emp_level_2009_present.csv"))
+local_ex_sch<-read_csv(here("ex_schools_local_emp_level_2009_present.csv"))
+state<-read_csv(here("state_emp_level_2009_present.csv"))
+state_exed<-read_csv(here("state_emp_exed_2009_present.csv"))
+```
+
+
+
+Local emp chart
+```{r}
+local_all_2<-local_all%>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Employment Level"=CES9093000001) %>% 
+  mutate(Group = "Local Gov. Employment") 
+
+local_exed_2<-local_ex_sch %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Employment Level"=CES9093200001) %>% 
+    mutate(Group = "Local Gov. Excluding Ed") 
+
+
+local_gov_comb<-bind_rows(local_all_2,local_exed_2)
+```
+
+```{r}
+local_gov_chart<-ggplot(local_all_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="A recession in local and state government employment",subtitle ="Except postal saervices, pulbic employment is down, 2009 - Nov 2021, seasonally adjusted", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))
+
+local_gov_chart
+ggsave("local_gov_chart.png",width=7.5,height=3.5)
+
+```
+
+
+```{r}
+
+local_gov_chart<-ggplot(local_all_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="Local government employment",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  theme(axis.title.y=element_blank())+
+  scale_x_date(breaks = pretty_breaks(11),expand = expansion(mult = c(0, .1)))+
+  scale_y_continuous(label=comma,breaks = seq(13400,14800,by=200))
+
+local_gov_exed_chart<-ggplot(local_exed_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="Local government employment, excluding education",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  theme(axis.title.y=element_blank())+
+  scale_x_date(breaks = pretty_breaks(11),expand = expansion(mult = c(0, .1)))+
+  scale_y_continuous(label=comma)
+
+ggsave("local_gov_emp_dec3.png",width=7.5,height=4.5,arrangeGrob(local_gov_chart, local_gov_exed_chart))
+
+                                          
+```
+
+
+```{r}
+
+local_gov_chart<-ggplot(local_all_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="Local government employment",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma,breaks = seq(13400,14800,by=200))
+
+local_gov_exed_chart<-ggplot(local_exed_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="Local government employment, excluding education",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma)
+
+ggsave("local_gov_emp_dec3.png",width=7.5,height=4.5,arrangeGrob(local_gov_chart, local_gov_exed_chart))
+
+                                          
+```
+
+```{r}
+local_gov_chart_interactive<-ggplotly(local_gov_chart, width = 500, height = 250)
+
+api_create(local_gov_chart_interactive, filename = "Local Government Employment: 2009-Nov 2021")
+```
+
+```{r}
+local_gov_exed_chart_interactive<-ggplotly(local_gov_exed_chart, width = 500, height = 250)
+
+api_create(local_gov_exed_chart_interactive, filename = "Local Government Employment Ex Ed: 2009-Nov 2021")
+```
+
+State employment
+```{r}
+state_2<-state %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Employment Level"=CES9092000001) %>% 
+  mutate(Group = "State Gov. Employment") 
+
+state_exed_2<-state_exed %>% 
+  dplyr::rename(Date=DATE) %>% 
+  dplyr::rename("Employment Level"=CES9092200001) %>% 
+  mutate(Group = "State Gov. Employment Ex Ed") 
+
+state_gov_comb<-bind_rows(state_2,state_exed_2)
+
+```
+
+```{r}
+state_gov_chart<-ggplot(state_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="State government employment",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11),expand = expansion(mult = c(0, .1)))+
+  scale_y_continuous(label=comma)
+
+state_gov_exed_chart<-ggplot(state_exed_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="State government employment, excluding education",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11),expand = expansion(mult = c(0, .1)))+
+  scale_y_continuous(label=comma)
+
+ggsave("state_gov_emp_dec3.png",width=7.5,height=4.5,arrangeGrob(state_gov_chart, state_gov_exed_chart))
+
+                                          
+```
+
+```{r}
+state_gov_chart<-ggplot(state_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="State government employment",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma)
+
+state_gov_exed_chart<-ggplot(state_exed_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="State government employment, excluding education",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma)
+
+ggsave("state_gov_emp_dec3.png",width=7.5,height=4.5,arrangeGrob(state_gov_chart, state_gov_exed_chart))
+
+                                          
+```
+
+-------------
+```{r}
+state_gov_chart<-ggplot(state_2,aes(x=Date,y=`Employment Level`))+
+  geom_rect(xmin=as.Date("2009-01-01"), xmax=as.Date("2009-06-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="Declining state government employment",subtitle ="2009 - Nov 2021, seasonally adjusted", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11),expand = expansion(mult = c(0, .1)))+
+  scale_y_continuous(label=comma)
+
+state_gov_chart
+ggsave("state_gov_chart.png",width=7.5,height=3.5)
+
+```
+
+```{r}
+state_gov_chart_interactive<-ggplotly(state_gov_chart, width = 500, height = 250)
+
+api_create(state_gov_chart_interactive, filename = "State Government Employment: 2009-Nov 2021")
+```
+
+```{r}
+state_gov_exed_chart_interactive<-ggplotly(state_gov_exed_chart, width = 500, height = 250)
+
+api_create(state_gov_exed_chart_interactive, filename = "State Government Employment Ex Ed: 2009-Nov 2021")
+```

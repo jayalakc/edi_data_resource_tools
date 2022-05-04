@@ -1,0 +1,661 @@
+---
+title: "2022 ET Paper Charts"
+author: "Jordan Ayala"
+date: "3/13/2022"
+output: html_document
+---
+
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(here)
+library(lubridate)
+library(ggplot2)
+
+library(scales)
+library(RColorBrewer)
+library(viridis)
+
+library(plotly)
+library(htmlwidgets)
+
+library(ggpubr)
+library(ggrepel)
+```
+
+
+```{r}
+options(scipen=999)
+```
+
+#Read in cleaned ET tables for charts
+```{r}
+#CES tables
+ces_jun21_2021<-read_csv(here("cesjune2021_states_jan20bench.csv"))
+ces_mar21_2021<-read_csv(here("cesmar2022_states_jan20bench.csv"))
+
+#State labels and fips
+states<-read_csv(here("states.csv"))
+
+et_sept<-read_csv(here("et_sept_map_chart.csv"))
+et_oct10<-read_csv(here("et_oct10_map_chart.csv"))
+et_oct28<-read_csv(here("et_oct28_map_chart.csv"))
+#et_nov9<-read_csv(here("et_nov9_map_chart.csv"))
+et_nov19<-read_csv(here("et_nov19_map_chart.csv"))
+et_dec14<-read_csv(here("et_dec14_map_chart.csv"))
+et_jan9<-read_csv(here("et_jan9_map_chart.csv"))       #2021
+#et_feb2<-read_csv(here("et_feb2_map_chart.csv"))     
+#et_feb8<-read_csv(here("et_feb8_map_chart.csv"))
+et_feb19<-read_csv(here("et_feb19_map_chart.csv"))
+et_mar1<-read_csv(here("et_mar1_map_chart.csv"))
+et_mar15<-read_csv(here("et_mar15_map_chart.csv"))
+et_mar20<-read_csv(here("et_mar20_map_chart.csv"))
+et_mar27<-read_csv(here("et_mar27_map_chart.csv"))
+#et_apr6<-read_csv(here("et_apr6_map_chart.csv"))
+et_may6<-read_csv(here("et_may6_map_chart.csv"))
+et_may19<-read_csv(here("et_may19_map_chart.csv"))
+et_jul1<-read_csv(here("et_jul1_map_chart.csv"))
+et_jul9<-read_csv(here("et_jul9_map_chart.csv"))
+et_sep24<-read_csv(here("et_sep24_map_chart.csv"))
+
+```
+
+#Read in CES March 2022
+```{r}
+et_sep24all15ths<-et_sep24 %>% 
+  dplyr::select(1,'2020-01-15','2020-02-15','2020-03-15','2020-04-15','2020-05-15','2020-06-15','2020-07-15','2020-08-15','2020-09-15','2020-10-15','2020-11-15','2020-12-15','2021-01-15','2021-02-15','2021-03-15','2021-04-15','2021-05-15','2021-06-15','2021-07-15','2021-08-10') %>% 
+  filter(!c(statefips==15 | statefips==38))
+
+ces_mar2022_2021<-read_csv(here("cesmar2022_states_jan20bench.csv"))
+
+pctchg_ces_may21<-ces_mar2022_2021 %>% 
+  dplyr::select(statefips,state,ces_pctchg_jan,ces_pctchg_feb,ces_pctchg_mar,ces_pctchg_apr,ces_pctchg_may,ces_pctchg_jun,ces_pctchg_jul,ces_pctchg_aug,ces_pctchg_sep,ces_pctchg_oct,ces_pctchg_nov,ces_pctchg_dec,ces_pctchg_jan21,ces_pctchg_jan21,ces_pctchg_feb21,ces_pctchg_mar21,ces_pctchg_apr21,ces_pctchg_may21,ces_pctchg_jun21,ces_pctchg_jul21,ces_pctchg_aug21) %>% 
+  filter(!c(statefips==15 | statefips==38))
+
+ces_mar2022_etcompsep24<-merge(et_sep24all15ths,pctchg_ces_may21, by= "statefips")
+```
+
+```{r}
+et_ces_sep24_etcomp<-ces_mar2022_etcompsep24 %>% 
+  rename(jan15_ET_sep24=`2020-01-15`) %>% 
+  rename(feb15_ET_sep24=`2020-02-15`) %>% 
+  rename(mar15_ET_sep24=`2020-03-15`) %>% 
+  rename(apr15_ET_sep24=`2020-04-15`) %>% 
+  rename(may15_ET_sep24=`2020-05-15`) %>% 
+  rename(jun15_ET_sep24=`2020-06-15`) %>% 
+  rename(jul15_ET_sep24=`2020-07-15`) %>% 
+  rename(aug15_ET_sep24=`2020-08-15`) %>%
+  rename(sep15_ET_sep24=`2020-09-15`) %>% 
+  rename(oct15_ET_sep24=`2020-10-15`) %>%
+  rename(nov15_ET_sep24=`2020-11-15`) %>% 
+  rename(dec15_ET_sep24=`2020-12-15`) %>% 
+  rename(jan2115_ET_sep24=`2021-01-15`) %>% 
+  rename(feb2115_ET_sep24=`2021-02-15`) %>% 
+  rename(mar2115_ET_sep24=`2021-03-15`) %>% 
+  rename(apr2115_ET_sep24=`2021-04-15`) %>% 
+  rename(may2115_ET_sep24=`2021-05-15`) %>% 
+  rename(jun2115_ET_sep24=`2021-06-15`) %>% 
+  rename(jul2115_ET_sep24=`2021-07-15`) %>% 
+  rename(aug2115_ET_sep24=`2021-08-10`) %>% 
+  select(1,22,2:21,23:42)
+
+```
+
+-----------------## Recreate Daily OI ET charts with CES at 15th------------------
+```{r}
+et_sept2<-et_sept %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:200) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Sep 2020 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_oct102<-et_oct10 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:200) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Oct 10 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+
+et_oct282<-et_oct28 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:244) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Oct 28 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_nov192<-et_nov19 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:264) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Nov 19 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_dec142<-et_dec14 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:279) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Dec 14 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+
+et_jan92<-et_jan9 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:286) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Jan 9 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_feb192<-et_feb19 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:330) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Feb 19 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_mar12<-et_mar1 %>% 
+  rename(statelabel=state...4) %>% 
+  select(statelabel,4:338) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Mar 1 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_mar152<-et_mar15 %>% 
+  rename(statelabel=state...4) %>% 
+  select(statelabel,4:377) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Mar 15 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_mar202<-et_mar20 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:383) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Mar 20 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_mar272<-et_mar27 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:392) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Mar 27 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_may62<-et_may6 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:425) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change May 6 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_may192<-et_may19 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:435) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change May 19 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_jul12<-et_jul1 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:481) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Jul 1 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_jul92<-et_jul9 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:481) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Jul 9 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+et_sep242<-et_sep24 %>% 
+  rename(State=state...2) %>% 
+  select(State,4:578) %>% 
+  pivot_longer(!State,names_to="Date",values_to="% Change Sep 24 ET") %>% 
+  mutate(Date=as.Date(Date))
+
+
+pctchg_cesmar2022<-ces_mar21_2021 %>% 
+  dplyr::select(statefips,state,ces_pctchg_jan,ces_pctchg_feb,ces_pctchg_mar,ces_pctchg_apr,ces_pctchg_may,ces_pctchg_jun,ces_pctchg_jul,ces_pctchg_aug,ces_pctchg_sep,ces_pctchg_oct,ces_pctchg_nov,ces_pctchg_dec,ces_pctchg_jan21,ces_pctchg_feb21,ces_pctchg_mar21,ces_pctchg_apr21,ces_pctchg_may21,ces_pctchg_jun21,ces_pctchg_jul21,ces_pctchg_aug21,ces_pctchg_sep21)
+```
+
+```{r}
+ces_mar2022<-pctchg_cesmar2022 %>%
+  rename('2020-01-15'=ces_pctchg_jan) %>% 
+  rename('2020-02-15'=ces_pctchg_feb) %>% 
+  rename('2020-03-15'=ces_pctchg_mar) %>% 
+  rename('2020-04-15'=ces_pctchg_apr) %>% 
+  rename('2020-05-15'=ces_pctchg_may) %>% 
+  rename('2020-06-15'=ces_pctchg_jun) %>% 
+  rename('2020-07-15'=ces_pctchg_jul) %>% 
+  rename('2020-08-15'=ces_pctchg_aug) %>% 
+  rename('2020-09-15'=ces_pctchg_sep) %>% 
+  rename('2020-10-15'=ces_pctchg_oct) %>% 
+  rename('2020-11-15'=ces_pctchg_nov) %>% 
+  rename('2020-12-15'=ces_pctchg_dec) %>% 
+  rename('2021-01-15'=ces_pctchg_jan21) %>% 
+  rename('2021-02-15'=ces_pctchg_feb21) %>% 
+  rename('2021-03-15'=ces_pctchg_mar21) %>% 
+  rename('2021-04-15'=ces_pctchg_apr21) %>% 
+  rename('2021-05-15'=ces_pctchg_may21) %>% 
+  rename('2021-06-15'=ces_pctchg_jun21) %>% 
+  rename('2021-07-15'=ces_pctchg_jul21) %>% 
+  rename('2021-08-15'=ces_pctchg_aug21) %>% 
+  rename('2021-09-15'=ces_pctchg_sep21) %>% 
+  rename(State=state) %>%
+  dplyr::select(State,3:23) %>%          #change this range to capture all columns
+  pivot_longer(!State,names_to="Date",values_to="CES % Change") %>% 
+  mutate(date=as.Date(Date))
+```
+
+Chart 1: Missouri and Kansas ET and CES unadjusted 
+Source ET, Paychex, Earnin, Intuit
+
+```{r}
+ces_mar_MO<-ces_mar2022 %>% 
+  filter(State=="MO") %>% 
+  rename(`% Change`=`CES % Change`) %>% 
+  dplyr::select(State,date,`% Change`) %>% 
+  rename(Date=date) %>% 
+  mutate(Series=recode(State,"MO"="CES"))
+  
+et_sep2_MO<-et_sept2 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="MO OI (Sept)") %>% 
+  rename(`% Change`=`% Change Sep 2020 ET`)%>% 
+  mutate(Series=recode(State,"MO OI (Sept)"="ET"))
+
+ces_et_MO<-bind_rows(et_sep2_MO,ces_mar_MO)
+```
+
+```{r}
+MO<-ggplot(ces_et_MO,aes(x=Date,y=`% Change`,color=Series))+
+  geom_line(aes(linetype=Series),size=1)+
+  scale_linetype_manual(values=c("solid","dashed"))+
+  scale_color_manual(values = c("grey26","grey52"))+
+  labs(title="Missouri", subtitle="Indexed to Jan 2020, Sep 2020 Economic Tracker and Mar 2022 CES",y="% Change",x="Date")+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle =0, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="bottom",legend.title=element_blank())+
+  geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+scale_x_date(breaks = pretty_breaks(10))+
+  scale_y_continuous(breaks=c(-15,-10,-5,0,5,10),lim=c(-20,5))
+
+MO
+
+ggsave("chart_MO_et_ces_2022.png",width=7.5,height=3.25)
+```
+
+```{r}
+ces_mar_KS<-ces_mar2022 %>% 
+  filter(State=="KS") %>% 
+  rename(`% Change`=`CES % Change`) %>% 
+  dplyr::select(State,date,`% Change`) %>% 
+  rename(Date=date) %>% 
+  mutate(Series=recode(State,"KS"="CES"))
+
+et_sep2_KS<-et_sept2 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="KS OI (Sept)") %>% 
+  rename(`% Change`=`% Change Sep 2020 ET`)%>% 
+  mutate(Series=recode(State,"KS OI (Sept)"="ET"))
+
+
+ces_et_KS<-bind_rows(et_sep2_KS,ces_mar_KS)
+```
+
+
+```{r}
+KS<-ggplot(ces_et_KS,aes(x=Date,y=`% Change`,color=Series))+
+  geom_line(aes(linetype=Series),size=1)+
+  scale_linetype_manual(values=c("solid","dashed"))+
+  scale_color_manual(values = c("grey26","grey52"))+
+  labs(title="Kansas", subtitle="Indexed to Jan 2020, Sep 2020 Economic Tracker and Mar 2022 CES",caption="Source: U.S. BLS CES, Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit",y="% Change",x="Date")+
+    theme_bw()+
+  theme(axis.text.x = element_text(angle =0, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="bottom",legend.title=element_blank())+
+  geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+scale_x_date(breaks = pretty_breaks(10))+
+  scale_y_continuous(breaks=c(-15,-10,-5,0,5,10),lim=c(-20,5))
+
+KS
+
+ggsave("chart_KS_et_ces_2022.png",width=7.5,height=3.5)
+```
+
+
+```{r}
+MO_KS<-ggplot(ces_et_MO_KS,aes(x=Date,y=`% Change`,color=Series))+
+  geom_line(aes(linetype=Series),size=1)+
+  scale_linetype_manual(values=c("solid","dashed","solid","dashed"))+
+  scale_color_grey()+
+  labs(title="Missouri and Kansas Percent Change in Private Employment", subtitle="Indexed to Jan 2020, Sep 24 2021 Economic Tracker and Mar 2022 CES",caption="Source: U.S. BLS CES, Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit",y="% Change",x="Date")+
+    theme(axis.text.x = element_text(angle =0, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="top")+
+  geom_hline(yintercept=0,color="black",size=1, linetype="dotted")+scale_x_date(breaks = pretty_breaks(10))+
+  theme_bw()+
+  scale_y_continuous(breaks=c(-15,-10,-5,0,5,10),lim=c(-20,5))
+
+MO_KS
+
+ggsave("chart_MOKS_et_ces_2022.png",width=7.5,height=4)
+```
+
+
+Chart 2 Arkansas
+```{r}
+ces_mar_AR<-ces_mar2022 %>% 
+  filter(State=="AR") %>% 
+  rename(`% Change`=`CES % Change`) %>% 
+  dplyr::select(State,date,`% Change`) %>% 
+  rename(Date=date) %>% 
+  mutate(Series=recode(State,"AR"="CES"))
+  
+et_sept_AR<-et_sept2 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (Sept)") %>% 
+  rename(`% Change`=`% Change Sep 2020 ET`)%>% 
+  mutate(Series=recode(State,"AR OI (Sept)"="Sep 2020"))
+
+et_oct28_AR<-et_oct282 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (Oct 28)") %>% 
+  rename(`% Change`=`% Change Oct 28 ET`) %>% 
+  mutate(Series=recode(State,"AR OI (Oct 28)"="Oct 2020"))
+
+et_nov19_AR<-et_nov192 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (Nov 19)") %>% 
+  rename(`% Change`=`% Change Nov 19 ET`)%>% 
+  mutate(Series=recode(State,"AR OI (Nov 19)"="Nov 2020"))
+
+
+et_dec14_AR<-et_dec142 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (Dec 15)") %>% 
+  rename(`% Change`=`% Change Dec 14 ET`)%>% 
+  mutate(Series=recode(State,"AR OI (Dec 14)"="Dec 2020"))
+
+#et_jan9_AR<-et_jan92 %>% 
+ # rename(State=statelabel) %>% 
+  #filter(State=="AR OI (Jan 9)") %>% 
+  #rename(`% Change`=`% Change Jan 9 ET`)%>% 
+  #mutate(Series=recode(State,"AR OI (Jan 9)"="Jan 9 2021"))
+
+et_feb19_AR<-et_feb192 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (Feb 19)") %>% 
+  rename(`% Change`=`% Change Feb 19 ET`)%>% 
+  mutate(Series=recode(State,"AR OI (Feb 19)"="Feb 2021"))
+
+et_mar1_AR<-et_mar12 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (Mar 1)") %>% 
+  rename(`% Change`=`% Change Mar 1 ET`)%>% 
+  mutate(Series=recode(State,"AR OI (Mar 1)"="Mar 2021"))
+
+#et_mar27_AR<-et_mar272 %>% 
+  #rename(State=statelabel) %>% 
+  #filter(State=="AR OI (Mar 27)") %>% 
+  #rename(`% Change`=`% Change Mar 27 ET`)%>% 
+  #mutate(Series=recode(State,"AR OI (Mar 27)"="Mar 2021"))
+
+et_may6_AR<-et_may62 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (May 6)") %>% 
+  rename(`% Change`=`% Change May 6 ET`)%>% 
+  mutate(Series=recode(State,"AR OI (May 6)"="May 2021"))
+
+et_jul9_AR<-et_jul92 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (Jul 9)") %>% 
+  rename(`% Change`=`% Change Jul 9 ET`)%>% 
+  mutate(Series=recode(State,"AR OI (Jul 9)"="Jul 2021"))
+
+et_sep24_AR<-et_sep242 %>% 
+  filter(State=="AR") %>% 
+  rename(`% Change`=`% Change Sep 24 ET`)%>% 
+  mutate(Series=recode(State,"AR"="Sep 2021"))
+
+
+
+cesmar22_et_AR_5v<-bind_rows(et_sept_AR,et_oct28_AR,et_mar1_AR,et_may6_AR,et_jul9_AR,et_sep24_AR,ces_mar_AR)
+```
+
+```{r}
+chart_AR_5v<-cesmar22_et_AR_5v %>% 
+  mutate(Series=fct_reorder(Series,Date,.fun = 'length'))
+
+chart_AR_5v %>% 
+  ggplot(aes(x=Date,y=`% Change`,color=Series))+
+  scale_color_grey()+
+  geom_line(size=1)+
+  labs(title="Arkansas Percent Change in Private Employment: Indexed to Jan 2020", subtitle="Sep 2020 through Sep 2021 Economic Tracker & March 2022 CES",caption="Source: Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit | March 2022 CES SAE",y="% Change",x="Date")+
+  theme_bw()+
+  theme(legend.position="right",legend.title = element_blank())+
+  geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+
+  scale_x_date(breaks = pretty_breaks(10))
+  
+
+chart_AR_5v
+
+ggsave("5v_chart_AR_mar27etv_sep24.png",width=7.6,height=3.5)
+```
+
+Chart 3 Oregon
+```{r}
+ces_mar_OR<-ces_mar2022 %>% 
+  filter(State=="OR") %>% 
+  rename(`% Change`=`CES % Change`) %>% 
+  dplyr::select(State,date,`% Change`) %>% 
+  rename(Date=date) %>% 
+  mutate(Series=recode(State,"OR"="CES"))
+  
+et_sept_OR<-et_sept2 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="OR OI (Sept)") %>% 
+  rename(`% Change`=`% Change Sep 2020 ET`)%>% 
+  mutate(Series=recode(State,"OR OI (Sept)"="Sep 2020"))
+
+et_oct28_OR<-et_oct282 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="OR OI (Oct 28)") %>% 
+  rename(`% Change`=`% Change Oct 28 ET`) %>% 
+  mutate(Series=recode(State,"OR OI (Oct 28)"="Oct 2020"))
+
+et_nov19_OR<-et_nov192 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="OR OI (Nov 19)") %>% 
+  rename(`% Change`=`% Change Nov 19 ET`)%>% 
+  mutate(Series=recode(State,"OR OI (Nov 19)"="Nov 2020"))
+
+
+et_dec14_OR<-et_dec142 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="OR OI (Dec 15)") %>% 
+  rename(`% Change`=`% Change Dec 14 ET`)%>% 
+  mutate(Series=recode(State,"OR OI (Dec 14)"="Dec 2020"))
+
+#et_jan9_OR<-et_jan92 %>% 
+ # rename(State=statelabel) %>% 
+  #filter(State=="OR OI (Jan 9)") %>% 
+  #rename(`% Change`=`% Change Jan 9 ET`)%>% 
+  #mutate(Series=recode(State,"OR OI (Jan 9)"="Jan 9 2021"))
+
+et_feb19_OR<-et_feb192 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="OR OI (Feb 19)") %>% 
+  rename(`% Change`=`% Change Feb 19 ET`)%>% 
+  mutate(Series=recode(State,"OR OI (Feb 19)"="Feb 2021"))
+
+et_mar1_OR<-et_mar12 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="OR OI (Mar 1)") %>% 
+  rename(`% Change`=`% Change Mar 1 ET`)%>% 
+  mutate(Series=recode(State,"OR OI (Mar 1)"="Mar 2021"))
+
+et_mar27_OR<-et_mar272 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (Mar 27)") %>% 
+  rename(`% Change`=`% Change Mar 27 ET`)%>% 
+  mutate(Series=recode(State,"AR OI (Mar 27)"="Mar 2021"))
+
+et_may6_OR<-et_may62 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="OR OI (May 6)") %>% 
+  rename(`% Change`=`% Change May 6 ET`)%>% 
+  mutate(Series=recode(State,"OR OI (May 6)"="May 2021"))
+
+et_jul9_OR<-et_jul92 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="OR OI (Jul 9)") %>% 
+  rename(`% Change`=`% Change Jul 9 ET`)%>% 
+  mutate(Series=recode(State,"OR OI (Jul 9)"="Jul 2021"))
+
+et_sep24_OR<-et_sep242 %>% 
+  filter(State=="OR") %>% 
+  rename(`% Change`=`% Change Sep 24 ET`)%>% 
+  mutate(Series=recode(State,"OR"="Sep 2021"))
+
+
+
+cesmar22_et_OR_5v<-bind_rows(et_sept_OR,et_mar27_OR,et_jul9_OR,et_sep24_OR,ces_mar_AR)
+```
+
+```{r}
+chart_OR_5v<-cesmar22_et_OR_5v %>% 
+  mutate(Series=fct_reorder(Series,Date,.fun = 'length'))
+
+chart_OR_5v %>% 
+  ggplot(aes(x=Date,y=`% Change`,color=Series))+
+  scale_color_grey()+
+  geom_line(size=1)+
+  labs(title="Oregon Percent Change in Private Employment: Indexed to Jan 2020", subtitle="Sep 2020 through Sep 2021 Economic Tracker & March 2022 CES",y="% Change",x="Date")+
+  theme_bw()+
+  theme(legend.position="right",legend.title = element_blank())+
+  geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+
+  scale_x_date(breaks = pretty_breaks(10))
+  
+
+chart_OR_5v
+
+ggsave("5v_chart_OR_mar27etv_sep24.png",width=7.6,height=3.35)
+```
+
+Chart 4 Mississippi
+```{r}
+ces_mar_MS<-ces_mar2022 %>% 
+  filter(State=="MS") %>% 
+  rename(`% Change`=`CES % Change`) %>% 
+  dplyr::select(State,date,`% Change`) %>% 
+  rename(Date=date) %>% 
+  mutate(Series=recode(State,"MS"="CES"))
+  
+et_sept_MS<-et_sept2 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="MS OI (Sept)") %>% 
+  rename(`% Change`=`% Change Sep 2020 ET`)%>% 
+  mutate(Series=recode(State,"MS OI (Sept)"="Sep 2020"))
+
+et_oct28_MS<-et_oct282 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="MS OI (Oct 28)") %>% 
+  rename(`% Change`=`% Change Oct 28 ET`) %>% 
+  mutate(Series=recode(State,"MS OI (Oct 28)"="Oct 2020"))
+
+et_nov19_MS<-et_nov192 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="MS OI (Nov 19)") %>% 
+  rename(`% Change`=`% Change Nov 19 ET`)%>% 
+  mutate(Series=recode(State,"MS OI (Nov 19)"="Nov 2020"))
+
+
+et_dec14_MS<-et_dec142 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="MS OI (Dec 15)") %>% 
+  rename(`% Change`=`% Change Dec 14 ET`)%>% 
+  mutate(Series=recode(State,"MS OI (Dec 14)"="Dec 2020"))
+
+#et_jan9_MS<-et_jan92 %>% 
+ # rename(State=statelabel) %>% 
+  #filter(State=="MS OI (Jan 9)") %>% 
+  #rename(`% Change`=`% Change Jan 9 ET`)%>% 
+  #mutate(Series=recode(State,"MS OI (Jan 9)"="Jan 9 2021"))
+
+et_feb19_MS<-et_feb192 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="MS OI (Feb 19)") %>% 
+  rename(`% Change`=`% Change Feb 19 ET`)%>% 
+  mutate(Series=recode(State,"MS OI (Feb 19)"="Feb 2021"))
+
+et_mar1_MS<-et_mar12 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="MS OI (Mar 1)") %>% 
+  rename(`% Change`=`% Change Mar 1 ET`)%>% 
+  mutate(Series=recode(State,"MS OI (Mar 1)"="Mar 2021"))
+
+et_mar27_MS<-et_mar272 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="AR OI (Mar 27)") %>% 
+  rename(`% Change`=`% Change Mar 27 ET`)%>% 
+  mutate(Series=recode(State,"AR OI (Mar 27)"="Mar 2021"))
+
+et_may6_MS<-et_may62 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="MS OI (May 6)") %>% 
+  rename(`% Change`=`% Change May 6 ET`)%>% 
+  mutate(Series=recode(State,"MS OI (May 6)"="May 2021"))
+
+et_jul9_MS<-et_jul92 %>% 
+  rename(State=statelabel) %>% 
+  filter(State=="MS OI (Jul 9)") %>% 
+  rename(`% Change`=`% Change Jul 9 ET`)%>% 
+  mutate(Series=recode(State,"MS OI (Jul 9)"="Jul 2021"))
+
+et_sep24_MS<-et_sep242 %>% 
+  filter(State=="MS") %>% 
+  rename(`% Change`=`% Change Sep 24 ET`)%>% 
+  mutate(Series=recode(State,"MS"="Sep 2021"))
+
+
+
+cesmar22_et_MS_5v<-bind_rows(et_sept_MS,et_mar27_MS,et_jul9_MS,ces_mar_AR)
+```
+
+```{r}
+chart_MS_5v<-cesmar22_et_MS_5v %>% 
+  mutate(Series=fct_reorder(Series,Date,.fun = 'length'))
+
+chart_MS_5v %>% 
+  ggplot(aes(x=Date,y=`% Change`,color=Series))+
+  scale_color_grey()+
+  geom_line(size=1)+
+  labs(title="Mississippi Percent Change in Private Employment: Indexed to Jan 2020", subtitle="Sep 2020 through Jul 2021 Economic Tracker & March 2022 CES",caption="Source: Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit | March 2022 CES SAE",y="% Change",x="Date")+
+  theme_bw()+
+  theme(legend.position="right",legend.title = element_blank())+
+  geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+
+  scale_x_date(breaks = pretty_breaks(10))
+  
+
+chart_MS_5v
+
+ggsave("5v_chart_MS_mar27etv_sep24.png",width=7.6,height=3.5)
+```
+
+wCorr package for weighted correlations
+```{r}
+install.packages("wCorr")
+```
+
+```{r}
+library(wCorr)
+```
+
+```{r}
+
+weightedCorr(
+  x,
+  y,
+  method = c("Pearson", "Spearman", "Polyserial", "Polychoric"),
+  weights = rep(1, length(x)),
+  ML = FALSE,
+  fast = TRUE
+)
+
+```
+
+
+
+
+
+
+
+
+
+
