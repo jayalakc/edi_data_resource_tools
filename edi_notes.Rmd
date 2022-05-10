@@ -38,16 +38,97 @@ Sys.setenv("plotly_api_key"="zi1v41Xlm0c2p0CdRZEJ")
 
 ```
 
+#EDI Note May 6 2022
+
+```{r}
+may_note<-read_csv(here("may_edinote.csv")) %>% 
+  rename("NILF Want Job + Invol PT / Unemployed"=NILFWJN_LNS12032194_UNEMPLOY) %>% 
+  rename(Date=DATE)
+```
+
+
+```{r}
+may_edinote_chart<-ggplot(may_note,aes(x=Date,y=`NILF Want Job + Invol PT / Unemployed`))+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="Ratio: Total workers wanting (more) employment / unemployed workers",subtitle ="NILF Want Job + Invol PT / Unemployed", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+may_edinote_chart
+
+ggsave("may_edinote_chart.png",width=8,height=3.2)
+```
+
+```{r}
+may_edinote_chart_interactive<-ggplotly(may_edinote_chart, width = 700, height = 250)
+
+api_create(may_edinote_chart_interactive, filename = "Ratio EDI Note May 6 2022")
+```
+
+May 6 2022 note chart 2
+```{r}
+chart2<-read_csv(here("mayeditnote_2.csv"))%>% 
+  rename("Unemployed"=UNEMPLOY) %>% 
+  rename("NILF Want Job + Invol PT"=NILFWJN_LNS12032194) %>% 
+  rename(Date=DATE)
+
+u_2<-chart2 %>% 
+  select(Date,Unemployed) %>% 
+  mutate(Group="Unemployed") %>% 
+  rename(Series=Unemployed)
+
+nilf<-chart2 %>% 
+  select(Date,"NILF Want Job + Invol PT") %>% 
+  mutate(Group="NILF Want Job + IPT") %>% 
+  rename(Series="NILF Want Job + Invol PT")
+
+chart22<-bind_rows(u_2,nilf)
+```
+
+```{r}
+may_edinote_chart2<-ggplot(chart22,aes(x=Date,y=Series,color=Group))+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1)+
+  scale_color_manual(
+    values=c("#192954","#be2b29"))+
+  labs(title="Workers wanting (more) employment", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+may_edinote_chart2
+
+ggsave("may_edinote_chart2.png",width=8,height=3.2)
+```
+
+
+```{r}
+may_edinote_chart2_interactive<-ggplotly(may_edinote_chart2, width = 700, height = 250)
+
+api_create(may_edinote_chart2_interactive, filename = "Chart 2 EDI Note May 6 2022")
+```
 
 --------
-EDI Note April 1 2022
+
+#EDI Note April 1 2022
 
 ```{r}
 un<-read_csv(here("unemp_series_april12022.csv"))
 ```
- 
-
-
 
 ```{r}
 un2<-un %>% 

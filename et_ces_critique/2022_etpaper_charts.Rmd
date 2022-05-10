@@ -24,6 +24,445 @@ library(ggpubr)
 library(ggrepel)
 ```
 
+#Corr table update May 9 2022
+Get state population weights from census
+```{r}
+library(tidycensus)
+census_api_key("f2efe085c3afcd002dc370ddd8f3e6fc96591d80",install=TRUE,overwrite=TRUE)
+```
+
+```{r}
+pop_wt<-get_estimates(geography="state",product="population")
+
+total_pop<-pop_wt %>% 
+  filter(variable=="POP") %>% 
+  filter(GEOID!=11 & GEOID!=72 & GEOID!=15 & GEOID!=38) %>% 
+  summarise(sum(value))
+```
+
+```{r}
+pop_wt_1<-pop_wt %>% 
+  filter(variable=="POP") %>% 
+  filter(GEOID!=11 & GEOID!=72 & GEOID!=15 & GEOID!=38) %>% 
+  mutate(statefips=as.numeric(GEOID)) %>% 
+  mutate(tot_pop=total_pop) %>% 
+  mutate(pop_wt=value/tot_pop*100)
+```
+
+#Checks
+```{r}
+#Check weights add to 100%
+#pop_wtsum<-pop_wt_1 %>% 
+  #summarise(sum(pop_wt))
+
+
+#corr_pop_oct2020<-full_join(pop_wt_1,corr_oct2020,by="statefips") %>% 
+ # rename(apr='2020-04-15') %>% 
+#  rename(may='2020-05-15') %>% 
+  #rename(jun='2020-06-15') %>% 
+  #rename(jul='2020-07-15') %>% 
+ # rename(aug='2020-07-29')
+
+#write_csv(corr_pop_oct2020,here("corr_oct2020.csv"))
+```
+
+
+```{r}
+#may 9
+corr_pop_oct2020<-read_csv(here("corr_oct2020.csv"))
+
+
+corr_pop3<-corr_pop_oct2020 %>%
+    filter(statefips!=11 & statefips!=38 & statefips!=2 & statefips!=28 & statefips!=30 & statefips!=46 & statefips!=56)
+```
+
+
+``{r}
+corr_pop_apr2021<-full_join(pop_wt_1,corr_apr2021,by="statefips")%>% 
+  rename(apr='2020-04-15') %>% 
+  rename(may='2020-05-15') %>% 
+  rename(jun='2020-06-15') %>% 
+  rename(jul='2020-07-15') %>% 
+  rename(aug='2020-08-15') %>% 
+  rename(sep='2020-09-15') %>% 
+  rename(oct='2020-10-15') %>% 
+  rename(nov='2020-11-15') %>% 
+  rename(dec='2020-12-15') %>% 
+  rename(jan='2021-01-15') %>% 
+  rename(feb='2021-02-12') 
+
+
+write_csv(corr_pop_apr2021,here("corr_apr2021.csv"))
+```
+
+```{r}
+#may 9 
+corr_pop_apr2021<-read_csv(here("corr_apr2021.csv"))
+
+corr_pop3<-corr_pop_apr2021 %>%
+    filter(statefips!=15 & statefips!=38 & statefips!=46)
+
+corr_pop_mar2022<-full_join(pop_wt_1,corr_latest,by="statefips")
+
+
+```
+
+
+#END corr update May 9 2022---------------------
+
+#Timeline viz
+https://www.themillerlab.io/post/timelines_in_r/
+
+```{r}
+library(knitr)
+library(timevis)
+library(scales)
+library(lubridate)
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r}
+et_ces_timeline <- data.frame(
+  Year = c(rep(c(2020), times = 10), rep(c(2021), times = 23)), 
+  Months = c(9,9,10,10,10,11,11,11,12,12,1,1,2,2,2,2,3,3,3,3,3,4,4,5,5,5,6,7,7,7,8,9,9), 
+  Days = c(15,20,10,15,28,9,15,19,14,15,9,15,2,8,15,19,1,15,15,20,27,6,15,6,15,19,15,1,9,15,15,15,24),
+  Milestones = c("CES","ET","ET","CES","ET","ET","CES","ET","ET","CES","ET","CES","ET","ET","CES","ET","ET","CES","ET","ET","ET","ET","CES","ET","CES","ET","CES","ET","ET","CES","CES","CES","ET"),
+  Event_type=c("CES","ET","ET","CES","ET","ET","CES","ET","ET","CES","ET","CES","ET","ET","CES","ET","ET","CES","ET","ET","ET","ET","CES","ET","CES","ET","CES","ET","ET","CES","CES","CES","ET"))
+  #The data set was created with the year, month and day in separate columns. Let's add the complete date column now
+
+et_ces_timeline$date <- with(et_ces_timeline, ymd(sprintf('%04d%02d%02d', et_ces_timeline$Year, et_ces_timeline$Months, et_ces_timeline$Days))) 
+# of note, the ymd() function transforms dates stored in character and numeric vectors to Date
+## we are using the code with(df, ymd(sprintf('%04d%02d%02d', year, mon, day))) to take those three columns and merge them into one that is recognized as a date in R
+
+#et_ces_timeline <- et_ces_timeline[with(et_ces_timeline, order(date)), ]
+# of note, an alternate code to arrange the df in ascending date order would have been: 
+## et_ces_timeline <- et_ces_timeline %>% arrange(date)
+
+```
+
+```{r}
+
+# Add a specified order to these event type labels
+Event_type_levels <- c("CES", "ET") 
+
+# Define the colors for the event types in the specified order. 
+## These hashtagged codes represent the colors (blue, green, yellow, red) as hexadecimal color codes.
+Event_type_colors <- c("gray", "black" ) 
+
+
+# Make the Event_type vector a factor using the levels we defined above
+et_ces_timeline$Event_type <- factor(et_ces_timeline$Event_type, levels= Event_type_levels, ordered=TRUE)
+```
+
+```{r}
+# Set the heights we will use for our milestones.
+positions <- c(0.5,-0.5,-0.75,0.5,-0.5,-0.75,0.5,-0.5,-0.75,0.5,-0.5,0.5,-0.5,-0.75,0.5,-0.5,-0.75,0.5,-0.5,-0.75,-1,-1.25,0.5,-0.5,0.5,-0.5,0.5,-0.5,-0.75,0.5,0.5,0.5,-0.5) 
+
+# Set the directions we will use for our milestone, for example above and below.
+directions <- c(1,-1,-1,1,-1,-1,1,-1,-1,1,-1,1,-1,-1,1,-1,-1,1,-1,-1,-1,-1,1,-1,1,-1,1,-1,-1,1,1,1,-1) 
+
+```
+
+```{r}
+# Assign the positions & directions to each date from those set above.
+line_pos <- data.frame(
+    "date"=unique(et_ces_timeline$date),
+    "position"=rep(positions, length.out=length(unique(et_ces_timeline$date))),
+    "direction"=rep(directions, length.out=length(unique(et_ces_timeline$date))))
+
+# Create columns with the specified positions and directions for each milestone event
+et_ces_timeline <- merge(x=et_ces_timeline, y=line_pos, by="date", all = TRUE) 
+
+# Let's view the new columns.
+kable(head(et_ces_timeline))
+```
+
+```{r}
+# Create a one month "buffer" at the start and end of the timeline
+month_buffer <- 1 
+
+month_date_range <- seq(min(et_ces_timeline$date) - months(month_buffer), max(et_ces_timeline$date) + months(month_buffer), by='month')
+
+
+# We are adding one month before and one month after the earliest and latest milestone.
+## We want the format of the months to be in the 3 letter abbreviations of each month.
+month_format <- format(month_date_range, '%b') 
+month_df <- data.frame(month_date_range, month_format)
+
+
+year_date_range <- seq(min(et_ces_timeline$date) - months(month_buffer), max(et_ces_timeline$date) + months(month_buffer), by='year')
+
+# We will only show the years for which we have a december to january transition.
+year_date_range <- as.Date(
+    intersect(
+        ceiling_date(year_date_range, unit="year"),
+        floor_date(year_date_range, unit="year")),  
+        origin = "1970-01-01") 
+
+# We want the format to be in the four digit format for years.
+year_format <- format(year_date_range, '%Y') 
+year_df <- data.frame(year_date_range, year_format)
+```
+
+```{r}
+# Create timeline coordinates with an x and y axis
+timeline_plot<-ggplot(et_ces_timeline,aes(x=date,y=position, col=Event_type, label=et_ces_timeline$Milestones)) 
+
+# Add the label Milestones
+timeline_plot<-timeline_plot+labs(col="Data series") 
+
+# Print plot
+timeline_plot
+```
+
+```{r}
+
+# Assigning the colors and order to the milestones
+timeline_plot<-timeline_plot+scale_color_manual(values=c("gray","black","black","gray","black","black","gray","black","black","gray","black","gray","black","black","gray","black","black","gray","black","black","black","black","gray","black","gray","black","gray","black","black","gray","gray","gray","black"), labels=Event_type_levels, drop = FALSE) 
+
+# Using the classic theme to remove background gray
+timeline_plot<-timeline_plot+theme_classic() 
+
+# Plot a horizontal line at y=0 for the timeline
+timeline_plot<-timeline_plot+geom_hline(yintercept=0, 
+                color = "black", size=0.3)
+# Print plot
+timeline_plot
+```
+
+```{r}
+# Plot the vertical lines for our timeline's milestone events
+
+timeline_plot<-timeline_plot+geom_segment(data=et_ces_timeline,aes(x=date,y=position,yend=0,xend=et_ces_timeline$date), color='black', size=0.2) 
+
+
+# Now let's plot the scatter points at the tips of the vertical lines and date
+timeline_plot<-timeline_plot+geom_point(aes(y=et_ces_timeline$position), size=3) 
+
+# Let's remove the axis since this is a horizontal timeline and postion the legend to the bottom
+timeline_plot<-timeline_plot+theme(axis.line.y=element_blank(),
+                 axis.text.y=element_blank(),
+                 axis.title.x=element_blank(),
+                 axis.title.y=element_blank(),
+                 axis.ticks.y=element_blank(),
+                 axis.text.x =element_blank(),
+                 axis.ticks.x =element_blank(),
+                 axis.line.x =element_blank(),
+                 legend.position = "bottom"
+                ) 
+# Print plot
+timeline_plot
+
+```
+
+```{r}
+# Plot the vertical lines for our timeline's milestone events
+timeline_plot<-timeline_plot+geom_segment(data=et_ces_timeline, aes(y=et_ces_timeline$position,yend=0,xend=date), color='black', size=0.2) 
+
+
+# Now let's plot the scatter points at the tips of the vertical lines and date
+timeline_plot<-timeline_plot+geom_point(aes(y=et_ces_timeline$position), size=3) 
+
+# Let's remove the axis since this is a horizontal timeline and postion the legend to the bottom
+timeline_plot<-timeline_plot+theme(axis.line.y=element_blank(),
+                 axis.text.y=element_blank(),
+                 axis.title.x=element_blank(),
+                 axis.title.y=element_blank(),
+                 axis.ticks.y=element_blank(),
+                 axis.text.x =element_blank(),
+                 axis.ticks.x =element_blank(),
+                 axis.line.x =element_blank(),
+                 legend.position = "bottom"
+                ) 
+# Print plot
+timeline_plot
+```
+
+```{r}
+# Let's add the text for each month
+timeline_plot<-timeline_plot+geom_text(data=month_df, aes(x=month_date_range,y=-0.15,label=month_format),size=3.5,vjust=0.5, color='black', angle=90) 
+
+
+# Let's add the years
+timeline_plot<-timeline_plot+geom_text(data=year_df, aes(x=year_date_range,y=-0.25,label=year_format, fontface="bold"),size=3.5, color='black') 
+
+# Print plot
+print(timeline_plot)
+```
+
+```{r}
+# We need to add the labels of each milestone now. 
+## To do this we have to define the text position. A clean timeline should have the labels situatuated a bit above the scatter points.
+### Since we have the positions of the points already defined, we will place the labels 0.2 pts away from the scatter points.
+
+
+# Lets offset the labels 0.2 away from scatter points
+text_offset <- 0.09 
+
+# Let's use the absolute value since we want to add the text_offset and increase space away from the scatter points 
+absolute_value<-(abs(et_ces_timeline$position)) 
+text_position<- absolute_value + text_offset
+
+# Let's keep the direction above or below for the labels to match the scatter points
+et_ces_timeline$text_position<- text_position * et_ces_timeline$direction 
+
+# View head of the table
+kable(head(et_ces_timeline))
+```
+
+```{r}
+# Now we can add the labels to the timeline for our milestones.
+timeline_plot<-timeline_plot+geom_text(aes(y=et_ces_timeline$text_position,label=et_ces_timeline$Milestones),size=3.5, vjust=0.6)
+
+# Print plot
+print(timeline_plot)
+```
+
+https://benalexkeen.com/creating-a-timeline-graphic-using-r-and-ggplot2/
+#Timeline Attempt 2 IT WORKS!!!!
+```{r}
+df<-read_csv(here("timeline.csv"))
+```
+
+```{r}
+status_levels<-c("CES Sep 2020","ET Sep 20","ET Oct 10","CES Oct 2020","ET Oct 28","ET Nov 11","CES Nov","ET Nov 19","ET Dec 14","CES Dec","ET Jan 9","CES Jan 2021","ET Feb 2","ET Feb 8","CES Feb","ET Feb 19","ET  Mar 1","CES Mar","ET Mar 15","ET Mar 20","ET Mar 27","ET Apr 6","CES Apr","ET May 6","CES May","ET May 19","CES Jun","ET Jul 1","ET Jul 9","CES Jul","CES Aug","CES Sep 2021","ET Sep 24","CES Oct 2021")
+status_colors<-c("black", "darkgrey","darkgrey","black","darkgrey","darkgrey","black","darkgrey","darkgrey","black","darkgrey","black","darkgrey","darkgrey","black","darkgrey","darkgrey","black","darkgrey","darkgrey","darkgrey","darkgrey","black","darkgrey","black","darkgrey","black","darkgrey","darkgrey","black","black","black","darkgrey","black")
+
+df$Milestones<-factor(df$Milestones,levels=status_levels)
+```
+
+```{r}
+text_offset <- 0.05 
+
+df$month_count<-1
+df$text_position<-(df$month_count*text_offset*df$direction)+df$position
+head(df)
+```
+
+```{r}
+month_buffer<-1
+
+month_date_range<-seq(min(df$date) - months(month_buffer),max(df$date)+months(month_buffer),by='month')
+month_format<-format(month_date_range,'%b')
+month_df<-data.frame(month_date_range,month_format)
+```
+
+```{r}
+year_date_range <- seq(min(df$date) - months(month_buffer), max(df$date) + months(month_buffer), by='year')
+year_date_range <- as.Date(
+    intersect(
+        ceiling_date(year_date_range, unit="year"),
+        floor_date(year_date_range, unit="year")
+    ),  origin = "1970-01-01"
+)
+year_format <- format(year_date_range, '%Y')
+year_df <- data.frame(year_date_range, year_format)
+```
+
+```{r}
+#### PLOT ####
+
+timeline_plot<-ggplot(df,aes(x=date,y=0, col=Milestones, label=Milestones))
+timeline_plot<-timeline_plot+labs(col="Data Series")
+timeline_plot<-timeline_plot+scale_color_manual(values=status_colors, labels=status_levels, drop = FALSE)
+timeline_plot<-timeline_plot+theme_classic()
+
+# Plot horizontal black line for timeline
+timeline_plot<-timeline_plot+geom_hline(yintercept=0, 
+                color = "black", size=0.3)
+
+# Plot vertical segment lines for milestones
+timeline_plot<-timeline_plot+geom_segment(data=df[df$month_count == 1,], aes(y=position,yend=0,xend=date), color='black', size=0.2)
+
+# Plot scatter points at zero and date
+timeline_plot<-timeline_plot+geom_point(aes(y=0), size=3)
+
+# Don't show axes, appropriately position legend
+timeline_plot<-timeline_plot+theme(axis.line.y=element_blank(),
+                 axis.text.y=element_blank(),
+                 axis.title.x=element_blank(),
+                 axis.title.y=element_blank(),
+                 axis.ticks.y=element_blank(),
+                 axis.text.x =element_blank(),
+                 axis.ticks.x =element_blank(),
+                 axis.line.x =element_blank(),
+                 legend.position = "none"
+                )
+
+# Show text for each month
+timeline_plot<-timeline_plot+geom_text(data=month_df, aes(x=month_date_range,y=-0.1,label=month_format),size=2.5,vjust=0.5, color='black', angle=90)
+# Show year text
+timeline_plot<-timeline_plot+geom_text(data=year_df, aes(x=year_date_range,y=-0.2,label=year_format, fontface="bold"),size=2.5, color='black')
+# Show text for each milestone
+timeline_plot<-timeline_plot+geom_text(aes(y=text_position,label=Milestones),size=2.5)
+print(timeline_plot)
+
+ggsave("timeline.png",width=7.5,height=2)
+```
+
+
+```{r}
+df <- df[order(df$date), ]
+
+et_ces_coverage<-ggplot(df, aes(x=Milestones,y=et_thru_date)) +
+  geom_bar(stat="identity",width=2,fill="darkgrey")+
+  ylab("Data Release")+
+  xlab("Covereage")+
+  labs(subtitle="ET and CES Release Coverage")+
+  theme(plot.title=element_text(size=14),plot.subtitle = element_text(size=12))+
+  theme_bw()
+
+et_ces_coverage
+ggsave("covereage_timeline.png",width=7.5,height=4)
+```
+
+```{r}
+install.packages("vistime")
+```
+```{r}
+library(vistime)
+```
+
+
+```{r}
+df2<-df %>% 
+  mutate(start=as_date("2020-01-01")) 
+
+df2 <- df2[order(df2$date), ]
+```
+
+
+```{r}
+df2 <- df2[order(df2$date), ]
+
+coverage<-gg_vistime(df2,
+                     col.event="Milestones",
+                     col.group = "Milestones",
+                     col.start="start",
+                     col.end = "et_thru_date",
+                     show_labels = FALSE,
+                     optimize_y = TRUE,
+                     linewidth = 2.5,
+                     background_lines = 21)
+
+coverage
+
+ggsave("coverage.pdf",width=7.5,height=5)
+
+```
+
+
+```{r}
+coverage<-coverag
+
+coverage
+```
+
+
+
+#----------------------------------------END TIMELINE VIZ
+
 
 ```{r}
 options(scipen=999)
@@ -34,6 +473,30 @@ options(scipen=999)
 #CES tables
 ces_jun21_2021<-read_csv(here("cesjune2021_states_jan20bench.csv"))
 ces_mar21_2021<-read_csv(here("cesmar2022_states_jan20bench.csv"))
+
+wide_ces_oct_2020<-read_csv(here("ces_nsa_wide_by_state_2020.csv"))
+
+ces_oct_2020<-wide_ces_oct_2020 %>% 
+  pivot_longer(2:51,names_to = "state", values_to = "pct_chg") %>% 
+  mutate(states=str_remove_all(state,"CES")) %>% 
+  select(states,month,pct_chg) %>% 
+  pivot_wider(id_cols=states,names_from = month,values_from = pct_chg) %>% 
+  mutate(ces_pctchg_jan=(`2020-01-15`-`2020-01-15`)/`2020-01-15`*100) %>% 
+  mutate(ces_pctchg_feb=(`2020-02-15`-`2020-01-15`)/`2020-01-15`*100) %>% 
+  mutate(ces_pctchg_mar=(`2020-03-15`-`2020-01-15`)/`2020-01-15`*100) %>% 
+  mutate(ces_pctchg_apr=(`2020-04-15`-`2020-01-15`)/`2020-01-15`*100) %>% 
+  mutate(ces_pctchg_may=(`2020-05-15`-`2020-01-15`)/`2020-01-15`*100) %>% 
+  mutate(ces_pctchg_jun=(`2020-06-15`-`2020-01-15`)/`2020-01-15`*100) %>% 
+  mutate(ces_pctchg_jul=(`2020-07-15`-`2020-01-15`)/`2020-01-15`*100) %>% 
+  mutate(ces_pctchg_aug=(`2020-08-15`-`2020-01-15`)/`2020-01-15`*100) %>% 
+  mutate(ces_pctchg_sep=(`2020-09-15`-`2020-01-15`)/`2020-01-15`*100) 
+
+write_csv(ces_oct_2020,here("octces2020.csv"))
+
+ces_apr_2021<-read_csv(here("ces_may2021.csv")) %>% 
+  select(1:2,31:46)
+
+#Bring in older CES
 
 #State labels and fips
 states<-read_csv(here("states.csv"))
@@ -52,18 +515,26 @@ et_mar1<-read_csv(here("et_mar1_map_chart.csv"))
 et_mar15<-read_csv(here("et_mar15_map_chart.csv"))
 et_mar20<-read_csv(here("et_mar20_map_chart.csv"))
 et_mar27<-read_csv(here("et_mar27_map_chart.csv"))
-#et_apr6<-read_csv(here("et_apr6_map_chart.csv"))
+et_apr6<-read_csv(here("et_apr6_map_chart.csv"))
 et_may6<-read_csv(here("et_may6_map_chart.csv"))
 et_may19<-read_csv(here("et_may19_map_chart.csv"))
 et_jul1<-read_csv(here("et_jul1_map_chart.csv"))
 et_jul9<-read_csv(here("et_jul9_map_chart.csv"))
 et_sep24<-read_csv(here("et_sep24_map_chart.csv"))
 
+#low wage
+et_sep24_low<-read_csv(here("et_sep24_map_chart_low.csv"))
+
+
 ```
 
 #Read in CES March 2022
 ```{r}
 et_sep24all15ths<-et_sep24 %>% 
+  dplyr::select(1,'2020-01-15','2020-02-15','2020-03-15','2020-04-15','2020-05-15','2020-06-15','2020-07-15','2020-08-15','2020-09-15','2020-10-15','2020-11-15','2020-12-15','2021-01-15','2021-02-15','2021-03-15','2021-04-15','2021-05-15','2021-06-15','2021-07-15','2021-08-10') %>% 
+  filter(!c(statefips==15 | statefips==38))
+
+et_sep24all15ths_low<-et_sep24_low %>% 
   dplyr::select(1,'2020-01-15','2020-02-15','2020-03-15','2020-04-15','2020-05-15','2020-06-15','2020-07-15','2020-08-15','2020-09-15','2020-10-15','2020-11-15','2020-12-15','2021-01-15','2021-02-15','2021-03-15','2021-04-15','2021-05-15','2021-06-15','2021-07-15','2021-08-10') %>% 
   filter(!c(statefips==15 | statefips==38))
 
@@ -75,6 +546,125 @@ pctchg_ces_may21<-ces_mar2022_2021 %>%
 
 ces_mar2022_etcompsep24<-merge(et_sep24all15ths,pctchg_ces_may21, by= "statefips")
 ```
+
+
+#----OLD
+
+Exclude HI and ND 15 and 38
+```{r}
+corr<-ces_mar2022_etcompsep24 %>% 
+  filter(statefips!=15) %>% 
+  filter(statefips!=38)
+```
+
+Change in Employment Rates to February 2020 by State
+```{r}
+feb_etsep2021v_cesmar22v<-ggscatter(corr,x="ces_pctchg_feb", y="2020-02-15",
+                         add="reg.line",
+                         add.params = list(color="#f5a641",fill="lightgrey"),
+                         conf.int=TRUE)+
+  stat_cor(method = "pearson",label.x=-0.8,label.y=4)+
+  geom_point(color="#4fb6a5") +
+  geom_text_repel(aes(label = state),color="#4fb6a5")+
+  geom_smooth(method="lm",se=F,color="#f5a641")+
+  labs(subtitle = "Sep 2021 Economic Tracker vs. Mar 2022 CES",
+       y="ET % Change Jan - Feb 2020",
+       x="CES % Change Jan - Feb 2020",
+       caption="Source: Opportuniy Insights Economic Tracker and CES (SAE)")+
+  geom_hline(yintercept=0,color="black",size=1, linetype="dashed")+
+  geom_vline(xintercept=0,color="black",size=1, linetype="dashed")
+
+feb_etsep2021v_cesmar22v
+
+ggsave("feb_etsep2021v_cesmar22v.png",width=7.5,height=4)
+```
+
+```{r}
+mar_etsep2021v_cesmar22v<-ggscatter(corr,x="ces_pctchg_mar", y="2020-03-15",
+                         add="reg.line",
+                         add.params = list(color="#f5a641",fill="lightgrey"),
+                         conf.int=TRUE)+
+  stat_cor(method = "pearson",label.x=-0.8,label.y=4)+
+  geom_point(color="#4fb6a5") +
+  geom_text_repel(aes(label = state),color="#4fb6a5")+
+  geom_smooth(method="lm",se=F,color="#f5a641")+
+  labs(subtitle = "Sep 2021 Economic Tracker vs. Mar 2022 CES",
+       y="ET % Change Jan - Mar 2020",
+       x="CES % Change Jan - Mar 2020",
+       caption="Source: Opportuniy Insights Economic Tracker and CES (SAE)")+
+  geom_hline(yintercept=0,color="black",size=1, linetype="dashed")+
+  geom_vline(xintercept=0,color="black",size=1, linetype="dashed")
+
+mar_etsep2021v_cesmar22v
+
+ggsave("mar_etsep2021v_cesmar22v.png",width=7.5,height=4)
+```
+
+```{r}
+apr_etsep2021v_cesmar22v<-ggscatter(corr,x="ces_pctchg_apr", y="2020-04-15",
+                         add="reg.line",
+                         add.params = list(color="#f5a641",fill="lightgrey"),
+                         conf.int=TRUE)+
+  stat_cor(method = "pearson",label.x=-23,label.y=-3)+
+  geom_point(color="#4fb6a5") +
+  geom_text_repel(aes(label = state),color="#4fb6a5")+
+  geom_smooth(method="lm",se=F,color="#f5a641")+
+  labs(subtitle = "Sep 2021 Economic Tracker vs. Mar 2022 CES",
+       y="ET % Change Jan - Apr 2020",
+       x="CES % Change Jan- Apr 2020",
+       caption="Source: Opportuniy Insights Economic Tracker and CES (SAE)")+
+  geom_hline(yintercept=0,color="black",size=1, linetype="dashed")+
+  geom_vline(xintercept=0,color="black",size=1, linetype="dashed")
+
+apr_etsep2021v_cesmar22v
+
+ggsave("apr_etsep2021v_cesmar22v.png",width=7.5,height=4)
+```
+
+```{r}
+aug_etsep2021v_cesmar22v<-ggscatter(corr,x="ces_pctchg_aug21", y="2021-08-10",
+                         add="reg.line",
+                         add.params = list(color="darkgray",fill="lightgrey"),
+                         conf.int=FALSE)+
+  stat_cor(method = "pearson",label.x=-10,label.y=10)+
+  geom_point(color="gray") +
+  geom_text_repel(aes(label = state),color="darkgray")+
+  geom_smooth(method="lm",se=F,color="darkgrey")+
+  labs(subtitle = "Sep 2021 Economic Tracker vs. Mar 2022 CES",
+       y="ET % Change Jan - Aug 2021",
+       x="CES % Change Jan - Aug 2021",
+       caption="Source: U.S. BLS CES, Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit")+
+  geom_hline(yintercept=0,color="black",size=1, linetype="dashed")+
+  geom_vline(xintercept=0,color="black",size=1, linetype="dashed")
+
+aug_etsep2021v_cesmar22v
+
+ggsave("aug_etsep2021v_cesmar22v.png",width=7.5,height=4)
+```
+
+
+```{r}
+jan_2021<-ggscatter(corr_pop_apr2021,x="ces_pctchg_jan21", y="jan",
+                         add="reg.line",
+                         add.params = list(color="#f5a641",fill="lightgrey"),
+                         conf.int=TRUE)+
+  stat_cor(method = "pearson",label.x=-0.8,label.y=4)+
+  geom_point(color="#4fb6a5") +
+  geom_text_repel(aes(label = state),color="#4fb6a5")+
+  geom_smooth(method="lm",se=F,color="#f5a641")+
+  labs(subtitle = "Sep 2021 Economic Tracker vs. Mar 2022 CES",
+       y="ET % Change Jan - jan 2020",
+       x="CES % Change Jan - jan 2020",
+       caption="Source: Opportuniy Insights Economic Tracker and CES (SAE)")+
+  geom_hline(yintercept=0,color="black",size=1, linetype="dashed")+
+  geom_vline(xintercept=0,color="black",size=1, linetype="dashed")
+
+jan_etsep2021v_cesmar22v
+
+ggsave("jan_etsep2021v_cesmar22v.png",width=7.5,height=4)
+```
+
+#______END corr plots
 
 ```{r}
 et_ces_sep24_etcomp<-ces_mar2022_etcompsep24 %>% 
@@ -172,6 +762,12 @@ et_mar272<-et_mar27 %>%
   pivot_longer(!statelabel,names_to="Date",values_to="% Change Mar 27 ET") %>% 
   mutate(Date=as.Date(Date))
 
+et_apr62<-et_apr6 %>% 
+  rename(statelabel=state...3) %>% 
+  select(statelabel,4:399) %>% 
+  pivot_longer(!statelabel,names_to="Date",values_to="% Change Mar 27 ET") %>% 
+  mutate(Date=as.Date(Date))
+
 et_may62<-et_may6 %>% 
   rename(statelabel=state...3) %>% 
   select(statelabel,4:425) %>% 
@@ -196,18 +792,69 @@ et_jul92<-et_jul9 %>%
   pivot_longer(!statelabel,names_to="Date",values_to="% Change Jul 9 ET") %>% 
   mutate(Date=as.Date(Date))
 
+#ran for new charts from screenshot
 et_sep242<-et_sep24 %>% 
   rename(State=state...2) %>% 
   select(State,4:578) %>% 
-  pivot_longer(!State,names_to="Date",values_to="% Change Sep 24 ET") %>% 
-  mutate(Date=as.Date(Date))
+  pivot_longer(!State,names_to="Date",values_to="% Change") %>% 
+  mutate(Date=as.Date(Date)) 
 
+#et_sep24_low2<-et_sep24_low %>% 
+ # rename(State=state...2) %>% 
+  #select(State,4:578) %>% 
+  #pivot_longer(!State,names_to="Date",values_to="% Change") %>% 
+  #mutate(Date=as.Date(Date)) %>% 
+  #mutate(Series="Low Wage")
+
+#et_sep2021_low_emp<-bind_rows(et_sep242,et_sep24_low2)
 
 pctchg_cesmar2022<-ces_mar21_2021 %>% 
   dplyr::select(statefips,state,ces_pctchg_jan,ces_pctchg_feb,ces_pctchg_mar,ces_pctchg_apr,ces_pctchg_may,ces_pctchg_jun,ces_pctchg_jul,ces_pctchg_aug,ces_pctchg_sep,ces_pctchg_oct,ces_pctchg_nov,ces_pctchg_dec,ces_pctchg_jan21,ces_pctchg_feb21,ces_pctchg_mar21,ces_pctchg_apr21,ces_pctchg_may21,ces_pctchg_jun21,ces_pctchg_jul21,ces_pctchg_aug21,ces_pctchg_sep21)
 ```
 
+
 ```{r}
+pctchg_cesoct2020<-ces_oct_2020 %>% 
+  dplyr::select(states,ces_pctchg_jan,ces_pctchg_feb,ces_pctchg_mar,ces_pctchg_apr,ces_pctchg_may,ces_pctchg_jun,ces_pctchg_jul,ces_pctchg_aug,ces_pctchg_sep)
+
+
+pctchg_cesmay2021<-ces_apr_2021 %>% 
+  dplyr::select(state,statefips,ces_pctchg_jan,ces_pctchg_feb,ces_pctchg_mar,ces_pctchg_apr,ces_pctchg_may,ces_pctchg_jun,ces_pctchg_jul,ces_pctchg_aug,ces_pctchg_sep,ces_pctchg_oct,ces_pctchg_nov,ces_pctchg_dec,ces_pctchg_jan21,ces_pctchg_feb21,ces_pctchg_mar21,ces_pctchg_apr21)
+```
+
+```{r}
+ces_oct2020<-pctchg_cesoct2020 %>%
+  rename('2020-01-15'=ces_pctchg_jan) %>% 
+  rename('2020-02-15'=ces_pctchg_feb) %>% 
+  rename('2020-03-15'=ces_pctchg_mar) %>% 
+  rename('2020-04-15'=ces_pctchg_apr) %>% 
+  rename('2020-05-15'=ces_pctchg_may) %>% 
+  rename('2020-06-15'=ces_pctchg_jun) %>% 
+  rename('2020-07-15'=ces_pctchg_jul) %>% 
+  rename('2020-08-15'=ces_pctchg_aug) %>% 
+  rename('2020-09-15'=ces_pctchg_sep) %>% 
+  rename(State=states) %>%
+  pivot_longer(!State,names_to="Date",values_to="CES % Change") %>% 
+  mutate(date=as.Date(Date))
+
+ces_may2021<-pctchg_cesmay2021 %>%
+  rename('2020-01-15'=ces_pctchg_jan) %>% 
+  rename('2020-02-15'=ces_pctchg_feb) %>% 
+  rename('2020-03-15'=ces_pctchg_mar) %>% 
+  rename('2020-04-15'=ces_pctchg_apr) %>% 
+  rename('2020-05-15'=ces_pctchg_may) %>% 
+  rename('2020-06-15'=ces_pctchg_jun) %>% 
+  rename('2020-07-15'=ces_pctchg_jul) %>% 
+  rename('2020-08-15'=ces_pctchg_aug) %>% 
+  rename('2020-09-15'=ces_pctchg_sep) %>% 
+  rename('2020-10-15'=ces_pctchg_oct) %>% 
+  rename('2020-11-15'=ces_pctchg_nov) %>% 
+  rename('2020-12-15'=ces_pctchg_dec) %>% 
+  rename('2021-01-15'=ces_pctchg_jan21) %>% 
+  rename('2021-02-15'=ces_pctchg_feb21) %>% 
+  rename('2021-03-15'=ces_pctchg_mar21) %>% 
+  rename('2021-04-15'=ces_pctchg_apr21) 
+
 ces_mar2022<-pctchg_cesmar2022 %>%
   rename('2020-01-15'=ces_pctchg_jan) %>% 
   rename('2020-02-15'=ces_pctchg_feb) %>% 
@@ -236,49 +883,84 @@ ces_mar2022<-pctchg_cesmar2022 %>%
   mutate(date=as.Date(Date))
 ```
 
+
+Sept 2020 correlations
+```{r}
+ces_oct_2020<-read_csv(here("octces2020.csv"))
+
+et_corr_sep2020<-et_sept %>% 
+  select(1,2,"2020-01-15","2020-02-15","2020-03-15","2020-04-15","2020-05-15","2020-06-15","2020-07-15","2020-07-29") %>% 
+  rename(states="state...2") 
+
+corr_oct2020<-right_join(ces_oct_2020,et_corr_sep2020,by="statefips")
+```
+
+April/May 2021 correlations
+```{r}
+et_corr_sep2021<-et_apr6 %>% 
+  select(1,2,"2020-01-15","2020-02-15","2020-03-15","2020-04-15","2020-05-15","2020-06-15","2020-07-15","2020-08-15","2020-09-15","2020-10-15","2020-11-15","2020-12-15","2021-01-15","2021-02-12") %>% 
+  rename(state="state...2") 
+
+corr_apr2021<-full_join(ces_apr_2021,et_corr_sep2021,by="state") %>% 
+  rename(statefips=statefips.x)
+```
+
+Latest release correlations
+```{r}
+ces_corr_mar2022<-ces_mar2022_2021 %>% 
+  select(1:2,39:59)
+
+et_corr_sep2021<-et_sep24 %>% 
+  select(1,2,"2020-01-15","2020-02-15","2020-03-15","2020-04-15","2020-05-15","2020-06-15","2020-07-15","2020-08-15","2020-09-15","2020-10-15","2020-11-15","2020-12-15","2021-01-15","2021-02-15","2021-03-15","2021-04-15","2021-05-15","2021-06-15","2021-07-15","2021-08-10") %>% 
+  rename(state="state...2") 
+
+corr_latest<-full_join(ces_corr_mar2022,et_corr_sep2021,by="state") %>% 
+  rename(statefips=statefips.x)
+```
+
+#State charts
 Chart 1: Missouri and Kansas ET and CES unadjusted 
 Source ET, Paychex, Earnin, Intuit
 
 ```{r}
-ces_mar_MO<-ces_mar2022 %>% 
-  filter(State=="MO") %>% 
-  rename(`% Change`=`CES % Change`) %>% 
-  dplyr::select(State,date,`% Change`) %>% 
-  rename(Date=date) %>% 
-  mutate(Series=recode(State,"MO"="CES"))
-  
+ces_oct_MO2<-read_csv(here("mo_octces.csv")) %>% 
+  mutate(Series=recode(State,"MO"="CES")) %>% 
+  rename("% Change"="CES % Change")
+```
+
+
+```{r}
 et_sep2_MO<-et_sept2 %>% 
   rename(State=statelabel) %>% 
   filter(State=="MO OI (Sept)") %>% 
-  rename(`% Change`=`% Change Sep 2020 ET`)%>% 
+  rename(`% Change`=`% Change Sep 2020 ET`) %>% 
   mutate(Series=recode(State,"MO OI (Sept)"="ET"))
 
-ces_et_MO<-bind_rows(et_sep2_MO,ces_mar_MO)
+ces_et_MO<-bind_rows(et_sep2_MO,ces_oct_MO2)
 ```
+
 
 ```{r}
 MO<-ggplot(ces_et_MO,aes(x=Date,y=`% Change`,color=Series))+
   geom_line(aes(linetype=Series),size=1)+
   scale_linetype_manual(values=c("solid","dashed"))+
   scale_color_manual(values = c("grey26","grey52"))+
-  labs(title="Missouri", subtitle="Indexed to Jan 2020, Sep 2020 Economic Tracker and Mar 2022 CES",y="% Change",x="Date")+
+  labs(title="Missouri", subtitle="Indexed to Jan 2020, Economic Tracker (Sep 2020 release), CES (Oct 2020 release)",y="% Change",x="Date")+
   theme_bw()+
-  theme(axis.text.x = element_text(angle =0, vjust=0.5),  
-        panel.grid.minor = element_blank(),legend.position="bottom",legend.title=element_blank())+
+  theme(axis.text.x = element_text(angle=0, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="right",legend.title=element_blank())+
   geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+scale_x_date(breaks = pretty_breaks(10))+
-  scale_y_continuous(breaks=c(-15,-10,-5,0,5,10),lim=c(-20,5))
+  scale_y_continuous(breaks=c(-15,-10,-5,0,5,10),lim=c(-20,5))+
+  scale_x_date(labels = date_format("%b %Y"),breaks = date_breaks("months"))
 
 MO
-
+here()
 ggsave("chart_MO_et_ces_2022.png",width=7.5,height=3.25)
 ```
 
 ```{r}
-ces_mar_KS<-ces_mar2022 %>% 
-  filter(State=="KS") %>% 
+ces_oct_KS<-read_csv(here("kc_cesoct.csv")) %>% 
   rename(`% Change`=`CES % Change`) %>% 
-  dplyr::select(State,date,`% Change`) %>% 
-  rename(Date=date) %>% 
   mutate(Series=recode(State,"KS"="CES"))
 
 et_sep2_KS<-et_sept2 %>% 
@@ -288,7 +970,7 @@ et_sep2_KS<-et_sept2 %>%
   mutate(Series=recode(State,"KS OI (Sept)"="ET"))
 
 
-ces_et_KS<-bind_rows(et_sep2_KS,ces_mar_KS)
+ces_et_KS<-bind_rows(et_sep2_KS,ces_oct_KS)
 ```
 
 
@@ -297,12 +979,13 @@ KS<-ggplot(ces_et_KS,aes(x=Date,y=`% Change`,color=Series))+
   geom_line(aes(linetype=Series),size=1)+
   scale_linetype_manual(values=c("solid","dashed"))+
   scale_color_manual(values = c("grey26","grey52"))+
-  labs(title="Kansas", subtitle="Indexed to Jan 2020, Sep 2020 Economic Tracker and Mar 2022 CES",caption="Source: U.S. BLS CES, Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit",y="% Change",x="Date")+
+  labs(title="Kansas", subtitle="Indexed to Jan 2020, Economic Tracker (Sep 2020 release), CES (Oct 2020 release)",caption="Source: Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit | CES State Area Estimates",y="% Change",x="Date")+
     theme_bw()+
   theme(axis.text.x = element_text(angle =0, vjust=0.5),  
-        panel.grid.minor = element_blank(),legend.position="bottom",legend.title=element_blank())+
+        panel.grid.minor = element_blank(),legend.position="right",legend.title=element_blank())+
   geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+scale_x_date(breaks = pretty_breaks(10))+
-  scale_y_continuous(breaks=c(-15,-10,-5,0,5,10),lim=c(-20,5))
+  scale_y_continuous(breaks=c(-15,-10,-5,0,5,10),lim=c(-20,5))+
+  scale_x_date(labels = date_format("%b %Y"),breaks = date_breaks("months"))
 
 KS
 
@@ -335,19 +1018,19 @@ ces_mar_AR<-ces_mar2022 %>%
   rename(`% Change`=`CES % Change`) %>% 
   dplyr::select(State,date,`% Change`) %>% 
   rename(Date=date) %>% 
-  mutate(Series=recode(State,"AR"="CES"))
+  mutate(Series=recode(State,"AR"="CES Mar 2022"))
   
 et_sept_AR<-et_sept2 %>% 
   rename(State=statelabel) %>% 
   filter(State=="AR OI (Sept)") %>% 
   rename(`% Change`=`% Change Sep 2020 ET`)%>% 
-  mutate(Series=recode(State,"AR OI (Sept)"="Sep 2020"))
+  mutate(Series=recode(State,"AR OI (Sept)"="ET Sep 2020"))
 
 et_oct28_AR<-et_oct282 %>% 
   rename(State=statelabel) %>% 
   filter(State=="AR OI (Oct 28)") %>% 
   rename(`% Change`=`% Change Oct 28 ET`) %>% 
-  mutate(Series=recode(State,"AR OI (Oct 28)"="Oct 2020"))
+  mutate(Series=recode(State,"AR OI (Oct 28)"="ET Oct 2020"))
 
 et_nov19_AR<-et_nov192 %>% 
   rename(State=statelabel) %>% 
@@ -378,7 +1061,7 @@ et_mar1_AR<-et_mar12 %>%
   rename(State=statelabel) %>% 
   filter(State=="AR OI (Mar 1)") %>% 
   rename(`% Change`=`% Change Mar 1 ET`)%>% 
-  mutate(Series=recode(State,"AR OI (Mar 1)"="Mar 2021"))
+  mutate(Series=recode(State,"AR OI (Mar 1)"="ET Mar 2021"))
 
 #et_mar27_AR<-et_mar272 %>% 
   #rename(State=statelabel) %>% 
@@ -388,24 +1071,23 @@ et_mar1_AR<-et_mar12 %>%
 
 et_may6_AR<-et_may62 %>% 
   rename(State=statelabel) %>% 
-  filter(State=="AR OI (May 6)") %>% 
+  filter(State=="AR OI (Apr 6)") %>% 
   rename(`% Change`=`% Change May 6 ET`)%>% 
-  mutate(Series=recode(State,"AR OI (May 6)"="May 2021"))
+  mutate(Series=recode(State,"AR OI (Apr 6)"="ET May 2021"))
 
 et_jul9_AR<-et_jul92 %>% 
   rename(State=statelabel) %>% 
   filter(State=="AR OI (Jul 9)") %>% 
   rename(`% Change`=`% Change Jul 9 ET`)%>% 
-  mutate(Series=recode(State,"AR OI (Jul 9)"="Jul 2021"))
+  mutate(Series=recode(State,"AR OI (Jul 9)"="ET Jul 2021"))
 
 et_sep24_AR<-et_sep242 %>% 
   filter(State=="AR") %>% 
-  rename(`% Change`=`% Change Sep 24 ET`)%>% 
-  mutate(Series=recode(State,"AR"="Sep 2021"))
+  mutate(Series=recode(State,"AR"="ET Sep 2021"))
 
 
 
-cesmar22_et_AR_5v<-bind_rows(et_sept_AR,et_oct28_AR,et_mar1_AR,et_may6_AR,et_jul9_AR,et_sep24_AR,ces_mar_AR)
+cesmar22_et_AR_5v<-bind_rows(et_sept_AR,et_oct28_AR,et_mar1_AR,et_jul9_AR,et_sep24_AR,ces_mar_AR)
 ```
 
 ```{r}
@@ -416,7 +1098,7 @@ chart_AR_5v %>%
   ggplot(aes(x=Date,y=`% Change`,color=Series))+
   scale_color_grey()+
   geom_line(size=1)+
-  labs(title="Arkansas Percent Change in Private Employment: Indexed to Jan 2020", subtitle="Sep 2020 through Sep 2021 Economic Tracker & March 2022 CES",caption="Source: Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit | March 2022 CES SAE",y="% Change",x="Date")+
+  labs(title="Arkansas", subtitle="Indexed to Jan 2020, Economic Tracker (Sep 2020-2021 releases), CES (Mar 2022 release)",caption="Source: Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit | CES State Area Estimates",y="% Change",x="Date")+
   theme_bw()+
   theme(legend.position="right",legend.title = element_blank())+
   geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+
@@ -441,7 +1123,7 @@ et_sept_OR<-et_sept2 %>%
   rename(State=statelabel) %>% 
   filter(State=="OR OI (Sept)") %>% 
   rename(`% Change`=`% Change Sep 2020 ET`)%>% 
-  mutate(Series=recode(State,"OR OI (Sept)"="Sep 2020"))
+  mutate(Series=recode(State,"OR OI (Sept)"="ET Sep 2020"))
 
 et_oct28_OR<-et_oct282 %>% 
   rename(State=statelabel) %>% 
@@ -484,24 +1166,23 @@ et_mar27_OR<-et_mar272 %>%
   rename(State=statelabel) %>% 
   filter(State=="AR OI (Mar 27)") %>% 
   rename(`% Change`=`% Change Mar 27 ET`)%>% 
-  mutate(Series=recode(State,"AR OI (Mar 27)"="Mar 2021"))
+  mutate(Series=recode(State,"AR OI (Mar 27)"="ET Mar 2021"))
 
 et_may6_OR<-et_may62 %>% 
   rename(State=statelabel) %>% 
   filter(State=="OR OI (May 6)") %>% 
   rename(`% Change`=`% Change May 6 ET`)%>% 
-  mutate(Series=recode(State,"OR OI (May 6)"="May 2021"))
+  mutate(Series=recode(State,"OR OI (May 6)"="ET May 2021"))
 
 et_jul9_OR<-et_jul92 %>% 
   rename(State=statelabel) %>% 
   filter(State=="OR OI (Jul 9)") %>% 
   rename(`% Change`=`% Change Jul 9 ET`)%>% 
-  mutate(Series=recode(State,"OR OI (Jul 9)"="Jul 2021"))
+  mutate(Series=recode(State,"OR OI (Jul 9)"="ET Jul 2021"))
 
 et_sep24_OR<-et_sep242 %>% 
   filter(State=="OR") %>% 
-  rename(`% Change`=`% Change Sep 24 ET`)%>% 
-  mutate(Series=recode(State,"OR"="Sep 2021"))
+  mutate(Series=recode(State,"OR"="ET Sep 2021"))
 
 
 
@@ -516,7 +1197,7 @@ chart_OR_5v %>%
   ggplot(aes(x=Date,y=`% Change`,color=Series))+
   scale_color_grey()+
   geom_line(size=1)+
-  labs(title="Oregon Percent Change in Private Employment: Indexed to Jan 2020", subtitle="Sep 2020 through Sep 2021 Economic Tracker & March 2022 CES",y="% Change",x="Date")+
+  labs(title="Oregon", subtitle="Indexed to Jan 2020, Economic Tracker (Sep 2020-2021 releases), CES (Mar 2022 release)",y="% Change",x="Date")+
   theme_bw()+
   theme(legend.position="right",legend.title = element_blank())+
   geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+
@@ -541,7 +1222,7 @@ et_sept_MS<-et_sept2 %>%
   rename(State=statelabel) %>% 
   filter(State=="MS OI (Sept)") %>% 
   rename(`% Change`=`% Change Sep 2020 ET`)%>% 
-  mutate(Series=recode(State,"MS OI (Sept)"="Sep 2020"))
+  mutate(Series=recode(State,"MS OI (Sept)"="ET Sep 2020"))
 
 et_oct28_MS<-et_oct282 %>% 
   rename(State=statelabel) %>% 
@@ -578,34 +1259,33 @@ et_mar1_MS<-et_mar12 %>%
   rename(State=statelabel) %>% 
   filter(State=="MS OI (Mar 1)") %>% 
   rename(`% Change`=`% Change Mar 1 ET`)%>% 
-  mutate(Series=recode(State,"MS OI (Mar 1)"="Mar 2021"))
+  mutate(Series=recode(State,"MS OI (Mar 1)"="ET Mar 2021"))
 
 et_mar27_MS<-et_mar272 %>% 
   rename(State=statelabel) %>% 
   filter(State=="AR OI (Mar 27)") %>% 
   rename(`% Change`=`% Change Mar 27 ET`)%>% 
-  mutate(Series=recode(State,"AR OI (Mar 27)"="Mar 2021"))
+  mutate(Series=recode(State,"AR OI (Mar 27)"="ET Mar 2021"))
 
 et_may6_MS<-et_may62 %>% 
   rename(State=statelabel) %>% 
-  filter(State=="MS OI (May 6)") %>% 
+  filter(State=="MS OI (Apr 6)") %>% 
   rename(`% Change`=`% Change May 6 ET`)%>% 
-  mutate(Series=recode(State,"MS OI (May 6)"="May 2021"))
+  mutate(Series=recode(State,"MS OI (Apr 6)"="ET May 2021"))
 
 et_jul9_MS<-et_jul92 %>% 
   rename(State=statelabel) %>% 
   filter(State=="MS OI (Jul 9)") %>% 
   rename(`% Change`=`% Change Jul 9 ET`)%>% 
-  mutate(Series=recode(State,"MS OI (Jul 9)"="Jul 2021"))
+  mutate(Series=recode(State,"MS OI (Jul 9)"="ET Jul 2021"))
 
 et_sep24_MS<-et_sep242 %>% 
   filter(State=="MS") %>% 
-  rename(`% Change`=`% Change Sep 24 ET`)%>% 
-  mutate(Series=recode(State,"MS"="Sep 2021"))
+  mutate(Series=recode(State,"MS"="ET Sep 2021"))
 
 
 
-cesmar22_et_MS_5v<-bind_rows(et_sept_MS,et_mar27_MS,et_jul9_MS,ces_mar_AR)
+cesmar22_et_MS_5v<-bind_rows(et_sept_MS,et_mar27_MS,et_may6_MS,et_jul9_MS,ces_mar_AR)
 ```
 
 ```{r}
@@ -616,44 +1296,179 @@ chart_MS_5v %>%
   ggplot(aes(x=Date,y=`% Change`,color=Series))+
   scale_color_grey()+
   geom_line(size=1)+
-  labs(title="Mississippi Percent Change in Private Employment: Indexed to Jan 2020", subtitle="Sep 2020 through Jul 2021 Economic Tracker & March 2022 CES",caption="Source: Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit | March 2022 CES SAE",y="% Change",x="Date")+
+  labs(title="Mississippi", subtitle="Indexed to Jan 2020, Economic Tracker (Sep 2020-Jul 2021 releases), CES (Mar 2022 release)",caption="Source: Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit | CES State Area Estimates",y="% Change",x="Date")+
   theme_bw()+
   theme(legend.position="right",legend.title = element_blank())+
   geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+
   scale_x_date(breaks = pretty_breaks(10))
   
-
 chart_MS_5v
 
 ggsave("5v_chart_MS_mar27etv_sep24.png",width=7.6,height=3.5)
 ```
 
+#Add charts for two screenshots here:
+Oregon and Illinois
+
+```{r}
+et_sep2_OR<-et_sep2021_low_emp %>%
+  filter(State=="OR")
+```
+
+
+```{r}
+OR_wlow<-ggplot(et_sep2_OR,aes(x=Date,y=`% Change`,color=Series))+
+  geom_line(aes(linetype=Series),size=1)+
+  scale_linetype_manual(values=c("solid","dashed"))+
+  scale_color_manual(values = c("grey26","grey52"))+
+  labs(title="Oregon", subtitle="Total and Low Wage, Indexed to Jan 2020, Sep 2021 Economic Tracker",caption="Source: Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit",y="% Change",x="Date")+
+    theme_bw()+
+  theme(axis.text.x = element_text(angle =0, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="right",legend.title=element_blank())+
+  geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+scale_x_date(breaks = pretty_breaks(10))+
+  scale_y_continuous(lim=c(-60,5))
+
+OR_wlow
+
+ggsave("chart_OR_low_total_et_ces_2022.png",width=7.5,height=3.5)
+```
+
+
+```{r}
+et_sep2_IL<-et_sep2021_low_emp %>%
+  filter(State=="IL")
+```
+
+
+```{r}
+IL_wlow<-ggplot(et_sep2_IL,aes(x=Date,y=`% Change`,color=Series))+
+  geom_line(aes(linetype=Series),size=1)+
+  scale_linetype_manual(values=c("solid","dashed"))+
+  scale_color_manual(values = c("grey26","grey52"))+
+  labs(title="Illinois", subtitle="Total and Low Wage, Indexed to Jan 2020, Sep 2021 Economic Tracker",caption="Source: Opportunity Insights Economic Tracker, Paychex, Earnin, Intuit",y="% Change",x="Date")+
+    theme_bw()+
+  theme(axis.text.x = element_text(angle =0, vjust=0.5),  
+        panel.grid.minor = element_blank(),legend.position="right",legend.title=element_blank())+
+  geom_hline(yintercept=0,color="black",size=1, linetype="longdash")+scale_x_date(breaks = pretty_breaks(10))+
+  scale_y_continuous(lim=c(-60,5))
+
+IL_wlow
+
+ggsave("chart_IL_low_total_et_ces_2022.png",width=7.5,height=3.5)
+```
+#-------------------------
+
+
+
 wCorr package for weighted correlations
 ```{r}
-install.packages("wCorr")
+#install.packages("wCorr")
 ```
 
 ```{r}
 library(wCorr)
 ```
 
+Sept 2020 correlations
 ```{r}
+ces_oct_2020<-read_csv(here("octces2020.csv"))
 
-weightedCorr(
-  x,
-  y,
-  method = c("Pearson", "Spearman", "Polyserial", "Polychoric"),
-  weights = rep(1, length(x)),
-  ML = FALSE,
-  fast = TRUE
-)
+et_corr_sep2020<-et_sept %>% 
+  select(1,2,"2020-01-15","2020-02-15","2020-03-15","2020-04-15","2020-05-15","2020-06-15","2020-07-15","2020-07-29") %>% 
+  rename(states="state...2") 
 
+corr_oct2020<-right_join(ces_oct_2020,et_corr_sep2020,by="statefips")
+```
+
+April/May 2021 correlations
+```{r}
+et_corr_sep2021<-et_apr6 %>% 
+  select(1,2,"2020-01-15","2020-02-15","2020-03-15","2020-04-15","2020-05-15","2020-06-15","2020-07-15","2020-08-15","2020-09-15","2020-10-15","2020-11-15","2020-12-15","2021-01-15","2021-02-12") %>% 
+  rename(state="state...2") 
+
+corr_apr2021<-full_join(ces_apr_2021,et_corr_sep2021,by="state") %>% 
+  rename(statefips=statefips.x)
+```
+
+Latest release correlations
+```{r}
+ces_corr_mar2022<-ces_mar2022_2021 %>% 
+  select(1:2,39:59)
+
+et_corr_sep2021<-et_sep24 %>% 
+  select(1,2,"2020-01-15","2020-02-15","2020-03-15","2020-04-15","2020-05-15","2020-06-15","2020-07-15","2020-08-15","2020-09-15","2020-10-15","2020-11-15","2020-12-15","2021-01-15","2021-02-15","2021-03-15","2021-04-15","2021-05-15","2021-06-15","2021-07-15","2021-08-10") %>% 
+  rename(state="state...2") 
+
+corr_latest<-full_join(ces_corr_mar2022,et_corr_sep2021,by="state") %>% 
+  rename(statefips=statefips.x)
 ```
 
 
 
 
 
+
+
+------OLD-----CLEAN THIS UP!
+```{r}
+pop_wt<-get_decennial(year=2020,survey="acs5",geography="state",table = "B25003",cache_table = TRUE)
+
+```
+
+
+```{r}
+corr_pop<-read_csv(here("corr_pop.csv"))
+
+```
+
+```{r}
+
+attach(corr_pop)
+  
+weightedCorr(y=ces_pctchg_feb,x=feb2020_et,
+  method = c("Pearson"),
+  weights = value
+)
+
+```
+
+```{r}
+corr_pop2<-corr_pop %>%
+    select(statefips,value,ces_pctchg_feb,feb2020_et)%>%
+    filter(statefips!=11 & statefips!=38 & statefips!=2 & statefips!=28 & statefips!=30 & statefips!=46 & statefips!=56)
+
+```
+
+
+Uncount and calc corr
+```{r}
+feb<-corr_pop %>% 
+  select(statefips,value,ces_pctchg_feb)
+??wCorr
+df1<-feb %>% 
+  uncount(value,.remove = TRUE,.id = statefips)
+
+feb2<-feb %>% 
+  rename(weighted_feb=ces_pctchg_feb)
+```
+
+```{r}
+memory.limit()
+```
+
+```{r}
+
+df2<-full_join(df1,feb2,by="weighted_feb")
+
+```
+
+```{r}
+#calc corr
+
+corr2_feb2020<-cor.test(corr_pop$feb2020_et,corr_pop$ces_pctchg_feb, method=c("pearson"))
+
+corr2_feb2020
+```
 
 
 

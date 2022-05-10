@@ -1,0 +1,215 @@
+---
+title: "jul9_ijpe_correlationtable"
+author: "Jordan Ayala"
+date: "5/9/2022"
+output: html_document
+---
+
+
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(here)
+library(lubridate)
+library(ggplot2)
+
+library(scales)
+library(RColorBrewer)
+library(viridis)
+
+library(plotly)
+library(htmlwidgets)
+
+library(ggpubr)
+library(ggrepel)
+```
+
+#Corr table update may 9 2022
+Get state population weights from census
+```{r}
+library(tidycensus)
+census_api_key("f2efe085c3afcd002dc370ddd8f3e6fc96591d80",install=TRUE,overwrite=TRUE)
+```
+
+```{r}
+pop_wt<-get_estimates(geography="state",product="population")
+
+total_pop<-pop_wt %>% 
+  filter(variable=="POP") %>% 
+  filter(GEOID!=11 & GEOID!=72 & GEOID!=15 & GEOID!=38) %>% 
+  summarise(sum(value))
+```
+
+```{r}
+pop_wt_1<-pop_wt %>% 
+  filter(variable=="POP") %>% 
+  filter(GEOID!=11 & GEOID!=72 & GEOID!=15 & GEOID!=38) %>% 
+  mutate(statefips=as.numeric(GEOID)) %>% 
+  mutate(tot_pop=total_pop$`sum(value)`) %>% 
+  mutate(pop_wt=value/tot_pop)
+```
+
+Sept 2020 CES with Sept 2020 ET -- April 2020 through August 2020
+```{r}
+corr_pop_sep2020<-read_csv(here("corr_oct2020.csv"))
+
+
+corr_sep2020_2<-corr_pop_sep2020 %>%
+    filter(statefips!=11 & statefips!=38 & statefips!=15)
+
+corr_sep2020_2
+```
+
+```{r}
+wt_corr_sep2020<-left_join(corr_sep2020_2,pop_wt_1,by="statefips")
+```
+
+```{r}
+apr2020_sep2020release_1<-wt_corr_sep2020 %>% 
+  select(statefips,states.x,NAME.x,ces_pctchg_apr,apr,pop_wt) %>% 
+  mutate(wt_et=apr*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_apr*pop_wt)
+
+apr2020_sep2020release<-cor.test(apr2020_sep2020release_1$wt_et,apr2020_sep2020release_1$wt_ces, method=c("pearson"))
+
+apr2020_sep2020release
+```
+
+```{r}
+may2020_sep2020release_1<-wt_corr_sep2020 %>% 
+  select(statefips,states.x,NAME.x,ces_pctchg_may,may,pop_wt) %>% 
+  mutate(wt_et=may*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_may*pop_wt)
+
+may2020_sep2020release<-cor.test(may2020_sep2020release_1$wt_et,may2020_sep2020release_1$wt_ces, method=c("pearson"))
+
+may2020_sep2020release
+```
+
+```{r}
+jun2020_sep2020release_1<-wt_corr_sep2020 %>% 
+  select(statefips,states.x,NAME.x,ces_pctchg_jun,jun,pop_wt) %>% 
+  mutate(wt_et=jun*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_jun*pop_wt)
+
+jun2020_sep2020release<-cor.test(jun2020_sep2020release_1$wt_et,jun2020_sep2020release_1$wt_ces, method=c("pearson"))
+
+jun2020_sep2020release
+```
+
+```{r}
+jul2020_sep2020release_1<-wt_corr_sep2020 %>% 
+  select(statefips,states.x,NAME.x,ces_pctchg_jul,jul,pop_wt) %>% 
+  mutate(wt_et=jul*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_jul*pop_wt)
+
+jul2020_sep2020release<-cor.test(jul2020_sep2020release_1$wt_et,jul2020_sep2020release_1$wt_ces, method=c("pearson"))
+
+jul2020_sep2020release
+```
+
+
+```{r}
+aug2020_sep2020release_1<-wt_corr_sep2020 %>% 
+  select(statefips,states.x,NAME.x,ces_pctchg_aug,aug,pop_wt) %>% 
+  mutate(wt_et=aug*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_aug*pop_wt)
+
+aug2020_sep2020release<-cor.test(aug2020_sep2020release_1$wt_et,aug2020_sep2020release_1$wt_ces, method=c("pearson"))
+
+aug2020_sep2020release
+```
+
+----
+#Apr 2021 CES with ET April 2021 -- April 2020 through Feb 2021
+```{r}
+corr_pop_apr2021<-read_csv(here("corr_apr2021.csv"))
+
+corr_apr2021_2<-corr_pop_apr2021 %>%
+    filter(statefips!=15 & statefips!=38 & statefips!=46)
+
+```
+
+
+```{r}
+wt_corr_apr2021<-left_join(corr_apr2021_2,pop_wt_1,by="statefips")
+```
+
+```{r}
+apr2020_apr2021release_1<-wt_corr_apr2021 %>% 
+  select(statefips,state,NAME.x,ces_pctchg_apr,apr,pop_wt) %>% 
+  mutate(wt_et=apr*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_apr*pop_wt)
+
+apr2020_apr2021release<-cor.test(apr2020_apr2021release_1$wt_et,apr2020_apr2021release_1$wt_ces, method=c("pearson"))
+
+apr2020_apr2021release
+```
+
+```{r}
+may2020_apr2021release_1<-wt_corr_apr2021 %>% 
+  select(statefips,state,NAME.x,ces_pctchg_may,may,pop_wt) %>% 
+  mutate(wt_et=may*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_may*pop_wt)
+
+may2020_apr2021release<-cor.test(may2020_apr2021release_1$wt_et,may2020_apr2021release_1$wt_ces, method=c("pearson"))
+
+may2020_apr2021release
+```
+
+```{r}
+jun2020_apr2021release_1<-wt_corr_apr2021 %>% 
+  select(statefips,state,NAME.x,ces_pctchg_jun,jun,pop_wt) %>% 
+  mutate(wt_et=jun*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_jun*pop_wt)
+
+jun2020_apr2021release<-cor.test(jun2020_apr2021release_1$wt_et,jun2020_apr2021release_1$wt_ces, method=c("pearson"))
+
+jun2020_apr2021release
+```
+
+```{r}
+jul2020_apr2021release_1<-wt_corr_apr2021 %>% 
+  select(statefips,state,NAME.x,ces_pctchg_jul,jul,pop_wt) %>% 
+  mutate(wt_et=jul*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_jul*pop_wt)
+
+jul2020_apr2021release<-cor.test(jul2020_apr2021release_1$wt_et,jul2020_apr2021release_1$wt_ces, method=c("pearson"))
+
+jul2020_apr2021release
+```
+
+
+```{r}
+aug2020_apr2021release_1<-wt_corr_apr2021 %>% 
+  select(statefips,state,NAME.x,ces_pctchg_aug,aug,pop_wt) %>% 
+  mutate(wt_et=aug*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_aug*pop_wt)
+
+aug2020_apr2021release<-cor.test(aug2020_apr2021release_1$wt_et,aug2020_apr2021release_1$wt_ces, method=c("pearson"))
+
+aug2020_apr2021release
+```
+```{r}
+sep2020_apr2021release_1<-wt_corr_apr2021 %>% 
+  select(statefips,state,NAME.x,ces_pctchg_sep,sep,pop_wt) %>% 
+  mutate(wt_et=sep*pop_wt) %>% 
+  mutate(wt_ces=ces_pctchg_sep*pop_wt)
+
+sep2020_apr2021release<-cor.test(sep2020_apr2021release_1$wt_et,sep2020_apr2021release_1$wt_ces, method=c("pearson"))
+
+sep2020_apr2021release
+```
+----
+
+#Mar 2022 CES with ET Sep 2021 -- April 2020 through August 2021
+```{r}
+corr_pop_aug2021<-read_csv(here("corr_aug2021.csv"))
+
+corr_pop_aug2021_2<-corr_pop_aug2021 %>%
+    filter(statefips!=11 & statefips!=38 & statefips!=2 & statefips!=28 & statefips!=30 & statefips!=46 & statefips!=56)
+
+
+```
+
