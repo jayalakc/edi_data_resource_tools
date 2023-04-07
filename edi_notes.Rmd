@@ -38,6 +38,591 @@ Sys.setenv("plotly_api_key"="zi1v41Xlm0c2p0CdRZEJ")
 
 ```
 
+#EDI Note September 2022
+
+Figure 1: Ratio of flows to employment from not-in-the-labor-force / flows to employment from unemployment
+
+```{r}
+c1<-read_csv(here("c1_sep2_2022.csv")) %>% 
+  rename("Flows from employment: nilf/unemployed"=avg_3mo) %>% 
+  rename(Date=DATE) %>% 
+  mutate(across(`Flows from employment: nilf/unemployed`, round, 2))
+```
+
+
+```{r}
+sep_edinote_chart1<-ggplot(c1,aes(x=Date,y=`Flows from employment: nilf/unemployed`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1, color="#192954")+
+ labs(title="Ratio of flows from employment: not-in-labor-force / unemployed", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+sep_edinote_chart1
+
+ggsave("sep_edinote_chart1.png",width=8,height=3.2)
+```
+
+
+```{r}
+sep_edinote_chart1_interactive<-ggplotly(sep_edinote_chart1, width = 700, height = 250)
+
+api_create(sep_edinote_chart1_interactive, filename = "Chart 1 EDI Note Sep 2 2022")
+```
+
+Figure 2 and 3 Employment levels
+
+
+```{r}
+c2a_l_h<-read_csv(here("c2a_sep2_2022.csv")) %>% 
+  rename(Date=DATE) %>% 
+  rename("Employment L&H"="USLAH")
+
+c1c_l_h<-read_csv(here("c1c_sep2_2022.csv")) %>% 
+  rename(Date=DATE) %>% 
+  rename("Employment Gov"="USGOVT")
+
+c2b_gov<-read_csv(here("c2b_gov_sep2_2022.csv")) %>% 
+  rename(Date=DATE) %>% 
+  rename("Employment Gov"="CES9093161101")
+```
+
+Leisure and hospitality
+```{r}
+emplh_chart<-ggplot(c2a_l_h,aes(x=Date,y=`Employment L&H`))+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="Employment Level: Leisure & Hospitality",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  theme(axis.title.y=element_blank())+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma)
+  
+emplh_chart
+  ggsave("sep_edinote_chart2a.png",width=8,height=3.2)
+```
+
+
+```{r}
+emptot_chart_interactive<-ggplotly(emplh_chart, width = 500, height = 250)
+
+api_create(emptot_chart_interactive, filename = "Chart 1a sep 2 2022")
+```
+
+Government emp
+```{r}
+empgov_chart<-ggplot(c1c_l_h,aes(x=Date,y=`Employment Gov`))+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="Employment Level: All Government",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  theme(axis.title.y=element_blank())+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma)
+empgov_chart
+ggsave("sep_edinote_chart2c.png",width=8,height=3.2)
+```
+
+```{r}
+emptot_chart_interactive<-ggplotly(empgov_chart, width = 500, height = 250)
+
+api_create(emptot_chart_interactive, filename = "Chart 1c sep 2 2022")
+```
+
+
+Government emp
+```{r}
+empgov_chart<-ggplot(c2b_gov,aes(x=Date,y=`Employment Gov`))+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="Employment Level: Local Government Education",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  theme(axis.title.y=element_blank())+
+  scale_x_date(breaks = pretty_breaks(11))+
+  scale_y_continuous(label=comma)
+empgov_chart
+ggsave("sep_edinote_chart2c.png",width=8,height=3.2)
+```
+
+
+```{r}
+emptot_chart_interactive<-ggplotly(emplh_chart, width = 500, height = 250)
+
+api_create(emptot_chart_interactive, filename = "Chart 1a sep 2 2022")
+```
+
+
+```{r}
+emptot_chart_interactive<-ggplotly(sep_edinote_chart2c, width = 500, height = 250)
+
+api_create(emptot_chart_interactive, filename = "Chart 1c sep 2 2022")
+```
+
+```{r}
+emp25_chart_interactive<-ggplotly(empgov_chart, width = 500, height = 250)
+
+api_create(emp25_chart_interactive, filename = "Chart 1b sep 2 2022")
+```
+
+
+
+
+
+Figure 2: Ratio of flows to employment from not-in-the-labor-force / flows to employment from unemployment
+
+```{r}
+c2<-read_csv(here("c2_sep2_2022.csv")) %>% 
+  rename("Flows to employment: nilf/unemployed"=avg_3mo) %>% 
+  rename(Date=DATE) %>% 
+  mutate(across(`Flows to employment: nilf/unemployed`, round, 2))
+```
+
+
+```{r}
+sep_edinote_chart2<-ggplot(c2,aes(x=Date,y=`Flows to employment: nilf/unemployed`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1, color="#192954")+
+ labs(title="Ratio of flows into employment: not-in-labor-force / unemployed", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+sep_edinote_chart2
+
+ggsave("sep_edinote_chart2.png",width=8,height=3.2)
+```
+
+
+```{r}
+sep_edinote_chart2_interactive<-ggplotly(sep_edinote_chart2, width = 700, height = 250)
+
+api_create(sep_edinote_chart2_interactive, filename = "Chart 2 EDI Note Sep 2 2022")
+```
+
+
+----------------------------END SEPT 2022 NOTE---------------------------------
+#EDI Note August 5 2022
+```{r}
+c1_tot<-read_csv(here("c1_tot_aug5_2022.csv")) %>% 
+  rename(Date=DATE) %>% 
+  rename("Employment Total"="CE16OV")
+c1_25<-read_csv(here("c1_25_54_aug5_2022.csv")) %>% 
+  rename(Date=DATE) %>% 
+  rename("Employment 25-54"="LNS12000060")
+```
+
+```{r}
+emptot_chart<-ggplot(c1_tot,aes(x=Date,y=`Employment Total`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#192954")+
+  labs(title="Employment Level: Total",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  theme(axis.title.y=element_blank())+
+  scale_x_date(breaks = pretty_breaks(11))
+  scale_y_continuous(label=comma)
+
+emp25_chart<-ggplot(c1_25,aes(x=Date,y=`Employment 25-54`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1,color="#be2b27")+
+  labs(title="Employment Level: Age 25-54",caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Thousands of persons",x="Date (monthly)")+
+  theme_bw()+
+  theme(axis.title.y=element_blank())+
+  scale_x_date(breaks = pretty_breaks(11))
+  scale_y_continuous(label=comma)
+
+ggsave("c1_aug5_2022.png",width=7.5,height=4.5,arrangeGrob(emptot_chart, emp25_chart))
+```
+
+
+```{r}
+emptot_chart_interactive<-ggplotly(emptot_chart, width = 500, height = 250)
+
+api_create(emptot_chart_interactive, filename = "Chart 1 Aug 5 2022")
+```
+
+```{r}
+emp25_chart_interactive<-ggplotly(emp25_chart, width = 500, height = 250)
+
+api_create(emp25_chart_interactive, filename = "Chart 1b Aug 5 2022")
+```
+
+Figure 2: Ratio of flows to employment from not-in-the-labor-force / flows to employment from unemployment
+
+```{r}
+c2<-read_csv(here("c2_aug5_2022.csv")) %>% 
+  rename("Flows to employment: nilf/unemployed"=avg_3mo) %>% 
+  rename(Date=DATE) %>% 
+  mutate(across(`Flows to employment: nilf/unemployed`, round, 2))
+```
+
+
+```{r}
+aug_edinote_chart2<-ggplot(c2,aes(x=Date,y=`Flows to employment: nilf/unemployed`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1, color="#192954")+
+ labs(title="Ratio of flows into employment: not-in-labor-force / unemployed", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+aug_edinote_chart2
+
+ggsave("aug_edinote_chart2.png",width=8,height=3.2)
+```
+
+
+```{r}
+aug_edinote_chart2_interactive<-ggplotly(aug_edinote_chart2, width = 700, height = 250)
+
+api_create(aug_edinote_chart2_interactive, filename = "Chart 2 EDI Note Aug 5 2022")
+```
+
+Figure 3: Ratio of involuntary part-time and not-in-the-labor-force want a job now / officially unemployed
+
+```{r}
+c3<-read_csv(here("c3_aug5_2022.csv")) %>% 
+  rename("Ratio Invol PT + NILF want job / unemployed"=avg_3mo) %>% 
+  rename(Date=DATE) %>% 
+  mutate(across(`Ratio Invol PT + NILF want job / unemployed`, round, 2))
+```
+
+
+```{r}
+aug_edinote_chart3<-ggplot(c3,aes(x=Date,y=`Ratio Invol PT + NILF want job / unemployed`))+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1, color="#192954")+
+ labs(caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+aug_edinote_chart3
+
+ggsave("aug_edinote_chart3.png",width=8,height=3.2)
+```
+
+
+```{r}
+aug_edinote_chart3_interactive<-ggplotly(aug_edinote_chart3, width = 700, height = 250)
+
+api_create(aug_edinote_chart3_interactive, filename = "Chart 3 EDI Note Aug 5 2022")
+```
+
+Figure 4: Ratio of not-in-the-labor-force want a job now / officially unemployed, 2012-2022
+
+```{r}
+c4<-read_csv(here("c4_aug5_2022.csv")) %>% 
+  rename("Ratio NILF want job / unemployed"=NILFWJN_UNEMPLOY) %>% 
+  rename(Date=DATE) %>% 
+  mutate(across(`Ratio NILF want job / unemployed`, round, 2))
+```
+
+
+```{r}
+aug_edinote_chart4<-ggplot(c4,aes(x=Date,y=`Ratio NILF want job / unemployed`))+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1, color="#192954")+
+ labs(caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+aug_edinote_chart4
+
+ggsave("aug_edinote_chart4.png",width=8,height=3.2)
+```
+
+
+```{r}
+aug_edinote_chart4_interactive<-ggplotly(aug_edinote_chart4, width = 700, height = 250)
+
+api_create(aug_edinote_chart4_interactive, filename = "Chart 4 EDI Note Aug 5 2022")
+```
+
+
+# EDI Note July 8 2022
+```{r}
+df<-read_csv(here("jul8_edinote.csv"))
+```
+```{r}
+df2<-df %>% 
+  rename("% change in employment"=PAYEMS_PCH) %>% 
+  rename(Date=DATE)
+```
+
+
+
+```{r}
+jul_edinote_chart2<-ggplot(df2,aes(x=Date,y=`% change in employment`))+
+  geom_line(size=1, color="#192954")+
+ labs(title="Four months of 0.25% job growth",subtitle ="Percent change in total nonfarm employment | all employees, total nonfarm", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Percent change (monthly)",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+jul_edinote_chart2
+
+ggsave("jul_edinote_chart2.png",width=7.5,height=3.2)
+```
+
+
+```{r}
+julnote_chart_interactive<-ggplotly(jun_edinote_chart1, width = 700, height = 250)
+
+api_create(julnote_chart_interactive, filename = "Chart 1 EDI Note Jul 8 2022")
+```
+
+
+Chart 2
+
+```{r}
+c2<-read_csv(here("jul8_edinote_chart2.csv"))
+```
+
+```{r}
+c2b<-c2 %>% 
+  rename("Officially unemployed leaving the labor force"=UNEMPLOY_LNS17900000) %>% 
+  rename(Date=DATE) %>% 
+  mutate(across(`Officially unemployed leaving the labor force`, round, 2))
+```
+
+
+
+```{r}
+jul_edinote_chart2<-ggplot(c2b,aes(x=Date,y=`Officially unemployed leaving the labor force`))+
+  geom_line(size=1, color="#192954")+
+ labs(title="Share of unemploymed leaving the labor force",subtitle ="Flows from Unemployment to not-in-labor-force / unemployment level, 2000 - June 2022", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+    scale_y_continuous()+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+jul_edinote_chart2
+
+ggsave("jul_edinote_chart2.png",width=7.5,height=3.2)
+```
+
+
+
+```{r}
+julnote_chart2_interactive<-ggplotly(jul_edinote_chart2, width = 700, height = 250)
+
+api_create(julnote_chart_interactive, filename = "Chart 2 EDI Note Jul 8 2022")
+```
+
+
+
+#EDI Note June 3 2022
+```{r}
+c1<-read_csv(here("chart_1_jun2022edinote.csv"))
+```
+
+```{r}
+chart1<-c1 %>% 
+  rename("Nonfarm Private Payroll Employment"=NPPTTL_CHG) %>% 
+  rename("Total Nonfarm Nonfarm Employment"=PAYEMS_CHG) %>% 
+  rename(Date=DATE) %>% 
+  pivot_longer(!Date,2:3,names_to="Group",values_to="Series")
+```
+
+
+
+```{r}
+jun_edinote_chart1<-ggplot(chart1,aes(x=Date,y=Series,color=Group))+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1)+
+  scale_color_manual(
+    values=c("#192954","#be2b29"))+
+  labs(title="Slowing pace of total and private sector payroll employment", caption = "U.S. BLS, ADP, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Change, thousands of persons",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(7))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+jun_edinote_chart1
+
+ggsave("jun_edinote_chart1.png",width=8,height=3.2)
+```
+
+
+```{r}
+jun_edinote_chart1_interactive<-ggplotly(jun_edinote_chart1, width = 700, height = 250)
+
+api_create(jun_edinote_chart1_interactive, filename = "Chart 1 EDI Note Jun 3 2022")
+```
+
+```{r}
+c2<-read_csv(here("chart_2_jun2022edinote.csv"))
+```
+
+```{r}
+chart2<-c2 %>% 
+  rename("Job Leavers"=LNS13023706) %>% 
+  rename("Reentrants"=LNS13023558) %>% 
+  rename("New Entrants"=LNS13023570) %>% 
+  rename("Job Losers"=LNS13023622) %>% 
+  rename(Date=DATE) %>% 
+  pivot_longer(!Date,2:5,names_to="Group",values_to="Series")
+```
+
+
+
+```{r}
+jun_edinote_chart2<-ggplot(chart2,aes(x=Date,y=Series,color=Group))+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1)+
+  scale_color_manual(
+    values=c("#192954","#be2b29","#fdcf60","#666666"))+
+  labs(title="Job leavers, reentrants, new entrants, and losers as a percent total unemployed", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Percent of unemployed",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+jun_edinote_chart2
+
+ggsave("jun_edinote_chart2.png",width=8,height=3.2)
+```
+
+
+```{r}
+jun_edinote_chart2_interactive<-ggplotly(jun_edinote_chart2, width = 700, height = 250)
+
+api_create(jun_edinote_chart2_interactive, filename = "Chart 2 EDI Note Jun 3 2022")
+```
+
+
+```{r}
+c3<-read_csv(here("chart_3_jun2022edinote.csv"))
+```
+
+```{r}
+chart3<-c3 %>% 
+  rename("NILF Want Job + Invol PT / Unemployed"=LNS12032194_NILFWJN_UNEMPLOY) %>% 
+  rename(Date=DATE)
+```
+
+
+
+```{r}
+jun_edinote_chart3<-ggplot(chart3,aes(x=Date,y=`NILF Want Job + Invol PT / Unemployed`))+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
+            ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1, color="#192954")+
+ labs(title="Ratio: Total workers wanting (more) employment / unemployed workers",subtitle ="NILF Want Job + Invol PT / Unemployed", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Ratio",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+jun_edinote_chart3
+
+ggsave("jun_edinote_chart3.png",width=8,height=3.2)
+```
+
+
+```{r}
+jun_edinote_chart3_interactive<-ggplotly(jun_edinote_chart3, width = 700, height = 250)
+
+api_create(jun_edinote_chart3_interactive, filename = "Chart 3 EDI Note Jun 3 2022")
+```
+
+
+```{r}
+cpav<-read_csv(here("chart_pav_jun2022edinote.csv"))
+```
+
+```{r}
+chartpav<-cpav %>% 
+  rename("Unemployed for 27 Weeks or Over / Unemployed"=UEMP27OV_UNEMPLOY) %>% 
+  rename(Date=DATE)
+```
+
+
+
+```{r}
+jun_edinote_chartpav<-ggplot(chartpav,aes(x=Date,y=`Unemployed for 27 Weeks or Over / Unemployed`))+
+  geom_rect(xmin=as.Date("1953-07-01"), xmax=as.Date("1954-05-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1957-08-01"), xmax=as.Date("1958-04-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1960-04-01"), xmax=as.Date("1961-02-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1969-12-01"), xmax=as.Date("1970-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1973-11-01"), xmax=as.Date("1975-03-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1980-01-01"), xmax=as.Date("1980-07-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1981-07-01"), xmax=as.Date("1982-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("1990-07-01"), xmax=as.Date("1991-03-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2001-03-01"), xmax=as.Date("2001-11-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_rect(xmin=as.Date("2007-12-01"), xmax=as.Date("2009-06-01"), 
+            ymin=-2.5, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
+  geom_line(size=1, color="#192954")+
+ labs(title="Unemployed for 27 Weeks or Over / Unemployed (%)", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Percent",x="Date (monthly)")+
+    scale_y_continuous(label=comma)+
+  theme_bw()+
+  scale_x_date(breaks = pretty_breaks(11))+
+    theme(legend.position="bottom",legend.title = element_blank())
+
+jun_edinote_chartpav
+
+ggsave("jun_edinote_chartpav.png",width=8,height=3.2)
+```
+
+
+```{r}
+jun_edinote_chartpav_interactive<-ggplotly(jun_edinote_chartpav, width = 700, height = 250)
+
+api_create(jun_edinote_chartpav_interactive, filename = "Chart Pav EDI Note Jun 3 2022")
+```
+
+
 #EDI Note May 6 2022
 
 ```{r}
@@ -230,34 +815,26 @@ un<-read_csv(here("unemp_series.csv"))
 
 Clean and prep for charts
 ```{r}
-jo2<-jo %>% 
+
+df1<-read_csv(here("mar2023_jobs_byseeking_fredgraph.csv"))
+
+df2<-df1 %>% 
   rename(Date=DATE) %>% 
   rename("Job Openings"=JTSJOL) %>% 
-  rename(levels=`Job Openings`) %>% 
-  mutate(Series="Job Openings")
+  rename("Seeking Employment: Unemployed, NILF Want a Job Now, and PT for Economic Reasons"=UNRATE_NILFWJN_LNS12032194) %>% 
+  pivot_longer(!Date,names_to="Series",values_to="levels")
 
-un2<-un %>% 
-  rename(Date=DATE) %>% 
-  mutate("Seeking Employment"=UNEMPLOY+NILFWJN+LNS12032194) %>% 
-  select(Date,"Seeking Employment") %>% 
-  rename(levels=`Seeking Employment`) %>% 
-  filter(Date<="2021-12-01") %>% 
-  filter(Date>="2000-12-01") %>% 
-    mutate(Series="Seeking employment")
-
-
-jo_un<-bind_rows(jo2,un2)
 ```
 
 
 ```{r}
-jo_un_chart<-ggplot(jo_un,aes(x=Date,y=levels,color=Series))+
+jo_un_chart<-ggplot(df2,aes(x=Date,y=levels,color=Series))+
   geom_rect(xmin=as.Date("2020-02-01"), xmax=as.Date("2020-04-01"), 
             ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
   geom_line(size=1)+
   scale_color_manual(
     values=c("#192954","#be2b29"))+
-  labs(title="Not enough job openings for all those seeking employment",subtitle ="Job openings with unemployed + NILF want a job now + PT for economic reasons, Dec 2000 - Dec 2021", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Level in thousands",x="Date (monthly)")+
+  labs(title="There Are Not Enough Job Openings for All Those Seeking Employment",subtitle ="Dec 2000 - Dec 2022", caption = "U.S. BLS, retrieved from FRED, Federal Reserve Bank of St. Louis",y="Level in thousands",x="Date (monthly)")+
     scale_y_continuous(label=comma)+
   theme_bw()+
   scale_x_date(breaks = pretty_breaks(11))+
@@ -265,17 +842,17 @@ jo_un_chart<-ggplot(jo_un,aes(x=Date,y=levels,color=Series))+
 
 
 jo_un_chart
-ggsave("job_openings_wantwork_chart.png",width=8,height=3.2)
+ggsave("job_openings_wantwork_chart.png",width=8.1,height=3.2)
 
 ```
 
 ```{r}
-newburgh_urate<-read_csv(here("newburgh_urate_bls.csv"))
+newburgh_urate<-read_csv(here("urate_comp_mar17_2023_newburgreport.csv"))
 ```
 
 ```{r}
 urate<-newburgh_urate %>% 
-  pivot_longer(2:4,names_to="Series",values_to="U-3")
+  pivot_longer(2:5,names_to="Series",values_to="U-3")
 ```
 
 ```{r}
@@ -284,8 +861,8 @@ u3_chart<-ggplot(urate,aes(x=Date,y=`U-3`,color=Series))+
             ymin=0, ymax=Inf, fill="grey90", alpha=0.3, col="grey90")+
   geom_line(size=1)+
   scale_color_manual(
-    values=c("#192954","#be2b29","#fdcf60"))+
-  labs(title="Unemployment rate comparison",subtitle ="Jan 2019 - Dec 2021", caption = "U.S. BLS, retrieved from mySidewalk Inc",y="Unemployment rate (%)",x="Date (monthly)")+
+    values=c("#192954","#be2b29","#fdcf60","darkgrey"))+
+  labs(title="Unemployment Rate Compared by Region",subtitle ="Jan 2020 - Dec 2022", caption = "U.S. BLS, retrieved from mySidewalk Inc",y="Unemployment rate (%)",x="Date (monthly)")+
     scale_y_continuous(label=comma)+
   theme_bw()+
   scale_x_date(breaks = pretty_breaks(10))+
@@ -293,7 +870,7 @@ u3_chart<-ggplot(urate,aes(x=Date,y=`U-3`,color=Series))+
 
 
 u3_chart
-ggsave("newburgh_u3comp_chart.png",width=8,height=3.5)
+ggsave("newburgh_u3comp_chart_mar2023.png",width=8,height=3.5)
 
 ```
 
@@ -324,6 +901,52 @@ pov_age_chart
 ggsave("newburgh_pov_age.png",width=7.5,height=3.2)
 ```
 
+Mar 2023 update poverty by region
+```{r}
+pov_reg<-read_csv(here("newburgh_pov_region_mar2023.csv")) %>% 
+    mutate(across(`% People Below Poverty Level`, round, 1))
+```
+
+```{r}
+theme_set(theme_bw())
+
+pov_reg_chart<-ggplot(data=pov_reg, aes(x=reorder(Region,-`% People Below Poverty Level`), y=`% People Below Poverty Level`)) +
+  labs(title="Poverty Rate Compared by Region",subtitle="U.S. Census Bureau 2017-2021",caption="U.S. Census Bureau retrieved from mySidewalk Inc")+
+  geom_bar(stat="identity",width=0.5,fill="#192954")+
+  geom_text(aes(label=`% People Below Poverty Level`),position=position_dodge(width=0.9), vjust=.25,hjust=1.25,color="white")+
+  theme(axis.text.x=element_text(angle=0,vjust=0.5,size=12))+
+  ylab("% People Below Poverty Level")+
+  xlab("Region")+
+  coord_flip()
+
+pov_reg_chart
+
+ggsave("newburgh_pov_region.png",width=7.5,height=3.2)
+```
+
+
+urate_by_group_mar17_2023_newburgreport
+
+```{r}
+df<-read_csv(here("urate_by_group_mar17_2023_newburgreport.csv"))
+```
+
+```{r}
+theme_set(theme_bw())
+
+urate_groups_chart<-ggplot(data=df, aes(x=reorder(`Social Group`,-`Unemployment Rate (%)`), y=`Unemployment Rate (%)`)) +
+  labs(title="Unemployment Rate by Group",subtitle="U.S. Census Bureau 2017-2021",caption="U.S. Census Bureau retrieved from mySidewalk Inc")+
+  geom_bar(stat="identity",width=0.5,fill="#192954")+
+  geom_text(aes(label=`Unemployment Rate (%)`),position=position_dodge(width=0.9), vjust=.25,hjust=1.25,color="white")+
+  theme(axis.text.x=element_text(angle=0,vjust=0,size=10))+
+  ylab("Unemployment Rate (%)")+
+  xlab("Social Group")+
+  coord_flip()
+
+urate_groups_chart
+
+ggsave("urate_groups_chart_mar2023.png",width=7.5,height=4.8)
+```
 -----------------Charts for 3/4/2022 EDI Note-------------------
 
 ```{r}
@@ -953,6 +1576,8 @@ u3_race_chart_interactive<-ggplotly(u3_race_chart, width = 700, height = 250)
 
 api_create(u3_race_chart_interactive, filename = "Unemployment by Group 2010-Oct 2021")
 ```
+
+
 
 
 #Dec 3 2021--------------------

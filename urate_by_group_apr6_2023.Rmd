@@ -1,0 +1,97 @@
+---
+title: "urate_by_group"
+author: "Jordan Ayala"
+date: '2023-04-06'
+output: html_document
+---
+
+```{r}
+library(here)
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+
+library(scales)
+library(RColorBrewer)
+library(viridis)
+
+library(plotly)
+library(htmlwidgets)
+
+library(ggpubr)
+library(ggrepel)
+
+library(gridExtra)
+```
+
+rate_by_group_mar17_2023_newburgreport
+
+```{r}
+df<-read_csv(here("urate_by_group_mar17_2023_newburgreport.csv"))
+```
+
+```{r}
+theme_set(theme_bw())
+
+urate_groups_chart<-ggplot(data=df, aes(x=reorder(`Social Group`,-`Unemployment Rate (%)`), y=`Unemployment Rate (%)`)) +
+  labs(title="Unemployment Rate by Group: Newburgh, NY",subtitle="U.S. Census Bureau 2017-2021",caption="U.S. Census Bureau retrieved from mySidewalk Inc")+
+  geom_bar(stat="identity",width=0.5,fill="#192954")+
+  geom_text(aes(label=`Unemployment Rate (%)`),position=position_dodge(width=0.9), vjust=.25,hjust=1.25,color="white")+
+  theme(axis.text.x=element_text(angle=0,vjust=0,size=10))+
+  ylab("Unemployment Rate (%)")+
+  xlab("Social Group")+
+  coord_flip()
+
+urate_groups_chart
+
+ggsave("urate_groups_chart_mar2023.png",width=7.5,height=4.8)
+```
+
+```{r}
+dfo<-read_csv(here("urate_by_group_apr6_2023_orange.csv"))
+```
+
+```{r}
+theme_set(theme_bw())
+
+urate_groups_chart_o<-ggplot(data=dfo, aes(x=reorder(`Social Group`,-`Unemployment Rate (%)`), y=`Unemployment Rate (%)`)) +
+  labs(title="Unemployment Rate by Group: Orange County, NY",subtitle="U.S. Census Bureau 2017-2021",caption="U.S. Census Bureau retrieved from mySidewalk Inc")+
+  geom_bar(stat="identity",width=0.5,fill="#be2b29")+
+  geom_text(aes(label=`Unemployment Rate (%)`),position=position_dodge(width=0.9), vjust=.25,hjust=1.25,color="white")+
+  theme(axis.text.x=element_text(angle=0,vjust=0,size=10))+
+  ylab("Unemployment Rate (%)")+
+  xlab("Social Group")+
+  coord_flip()
+
+urate_groups_chart_o
+
+ggsave("urate_groups_chart_apr2023_orange.png",width=7.5,height=4.8)
+```
+
+Combined
+```{r}
+df_combined<-read_csv("urate_by_group_apr6_2023_orange_newburgh_combined.csv")
+
+
+  
+```
+
+(x=Date,y=Series,color=Group)
+
+```{r}
+theme_set(theme_bw())
+
+urate_groups_chart_com<-ggplot(data=df_combined, aes(x=reorder(`Social Group`,-`Unemployment Rate (%)`), y=`Unemployment Rate (%)`),fill=Series) +
+  labs(title="Unemployment Rate by Group",subtitle="Newburgh and Orange County, NY, ACS 2017-2021",caption="U.S. Census Bureau retrieved from mySidewalk Inc")+
+  geom_bar(stat="identity",width=0.5)+
+  scale_fill_manual(values = c("Newburgh" = "", "Orange" = "#be2b29"))+
+  geom_text(aes(label=`Unemployment Rate (%)`),position=position_dodge(width=0.9), vjust=.25,hjust=1.25,color="white")+
+  theme(axis.text.x=element_text(angle=0,vjust=0,size=8))+
+  ylab("Unemployment Rate (%)")+
+  xlab("Social Group")+
+  coord_flip()
+
+urate_groups_chart_com
+
+ggsave("urate_groups_chart_apr2023_combined.png",width=7.5,height=8)
+```
